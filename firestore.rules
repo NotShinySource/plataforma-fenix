@@ -1,0 +1,66 @@
+rules_version = '2';
+
+// ============================================================================
+// REGLAS TEMPORALES SIMPLIFICADAS PARA EL DEMO — pendientes de endurecer.
+// Cualquier usuario autenticado puede LEER cualquier documento. Para ESCRIBIR,
+// solo se exige que su propio uid coincida con el campo "dueño" del
+// documento (profesorId / alumnoId / usuarioId / docenteResponsableId, según
+// la colección). NO se valida todavía pertenencia real a un elenco vía
+// miembros_elenco (decisión 4.2.2) — eso es lo que falta para las reglas
+// definitivas y queda pendiente en el checklist, a endurecer antes de
+// cualquier despliegue a producción real.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    // En create/update el dato vive en request.resource.data; en delete solo
+    // existe resource.data (el documento que se está borrando).
+    function esDuenio(campo) {
+      return request.method == 'delete'
+        ? resource.data[campo] == request.auth.uid
+        : request.resource.data[campo] == request.auth.uid;
+    }
+
+    match /usuarios/{uid} {
+      allow read: if autenticado();
+      allow write: if autenticado() && request.auth.uid == uid;
+    }
+
+    match /elencos/{elencoId} {
+      allow read: if autenticado();
+      allow write: if autenticado() && esDuenio('docenteResponsableId');
+    }
+
+    match /miembros_elenco/{membresiaId} {
+      allow read: if autenticado();
+      allow write: if autenticado() && esDuenio('usuarioId');
+    }
+
+    match /archivos/{archivoId} {
+      allow read: if autenticado();
+      allow write: if autenticado() && esDuenio('profesorId');
+    }
+
+    match /asistencias/{asistenciaId} {
+      allow read: if autenticado();
+      allow write: if autenticado() && esDuenio('profesorId');
+    }
+
+    match /avisos/{avisoId} {
+      allow read: if autenticado();
+      allow write: if autenticado() && esDuenio('profesorId');
+
+      // El ID del documento ya es el alumnoId (decisión 4.2.4), no hay campo
+      // propio que comparar.
+      match /lecturas/{alumnoId} {
+        allow read: if autenticado();
+        allow write: if autenticado() && request.auth.uid == alumnoId;
+      }
+    }
+  }
+}

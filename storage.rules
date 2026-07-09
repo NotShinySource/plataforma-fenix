@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// ============================================================================
+// REGLAS TEMPORALES SIMPLIFICADAS — mismo criterio que firestore.rules (ver
+// el comentario ahí). Cualquier usuario autenticado
+// puede LEER cualquier objeto. Para ESCRIBIR, solo dentro de una carpeta
+// asociada a su propio uid (usuarios/{uid}/**), o dentro de la carpeta de un
+// elenco (elencos/{elencoId}/**) si tiene membresía activa como profesor en
+// ese elenco — verificado en vivo contra Firestore (miembros_elenco,
+// decisión 4.2.2) vía firestore.get()/firestore.exists(), no duplicado a
+// mano en Storage. NO valida más matices que eso (p. ej. no impide que un
+// profesor de OTRO elenco distinto al que sube el archivo lo intente si
+// conociera el elencoId correcto y tuviera membresía ahí — la separación es
+// por elenco, no por archivo individual). A endurecer junto con
+// firestore.rules antes de cualquier despliegue a producción real.
+// ============================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function esProfesorDelElenco(elencoId) {
+      let membresiaId = elencoId + '_' + request.auth.uid;
+      let rutaMembresia = /databases/(default)/documents/miembros_elenco/$(membresiaId);
+      return firestore.exists(rutaMembresia) &&
+        firestore.get(rutaMembresia).data.rolEnElenco == 'profesor';
+    }
+
+    // Lectura abierta a cualquier autenticado, sin importar la ruta.
+    match /{allPaths=**} {
+      allow read: if autenticado();
+    }
+
+    match /usuarios/{uid}/{allPaths=**} {
+      allow write: if autenticado() && request.auth.uid == uid;
+    }
+
+    match /elencos/{elencoId}/{allPaths=**} {
+      allow write: if autenticado() && esProfesorDelElenco(elencoId);
+    }
+  }
+}
