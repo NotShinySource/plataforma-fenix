@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { FacebookIcon, InstagramIcon } from "./SocialIcons";
 
 export function Footer() {
@@ -61,15 +61,7 @@ export function Footer() {
             <div className="space-y-3 font-medium text-sm text-slate-400">
               <div className="flex items-center gap-3">
                 <MapPin className="w-4 h-4 text-slate-500" />
-                <span>Ex Parque de los Lolos s/n, Calama</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Mail className="w-4 h-4 text-slate-500" />
-                <span>contacto@calambanda.cl</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Phone className="w-4 h-4 text-slate-500" />
-                <span>+56 55 2123 456</span>
+                <span>Centro Arte Ojo Del Desierto</span>
               </div>
             </div>
           </div>
