@@ -1,5 +1,6 @@
-import { Mail, MapPin, Music, Phone } from "lucide-react";
-import { FacebookIcon, InstagramIcon, TwitterIcon } from "./SocialIcons";
+import Image from "next/image";
+import { Mail, MapPin, Phone } from "lucide-react";
+import { FacebookIcon, InstagramIcon } from "./SocialIcons";
 
 export function Footer() {
   return (
@@ -10,11 +11,22 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 pb-16 border-b border-white/10">
           <div className="md:col-span-5 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-primary p-2 rounded-xl">
-                <Music className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-extrabold text-2xl tracking-tighter">CALAMBANDA</span>
+            <div className="flex items-center gap-5">
+              <Image
+                src="/imagenes/inicio/CALAMABANDA.png"
+                alt="Calambanda"
+                width={1179}
+                height={435}
+                className="h-14 w-auto"
+              />
+              <div className="h-12 w-px bg-white/15" aria-hidden="true" />
+              <Image
+                src="/imagenes/inicio/Cultura-Bl.png"
+                alt="Corporación de Cultura y Turismo de Calama"
+                width={1201}
+                height={666}
+                className="h-14 w-auto"
+              />
             </div>
             <p className="text-slate-400 text-sm font-medium leading-relaxed max-w-sm">
               Escuela de Música Infanto Juvenil de la Corporación de Cultura y Turismo de Calama.
@@ -22,25 +34,22 @@ export function Footer() {
             </p>
             <div className="flex gap-4 pt-2">
               <a
-                href="#"
+                href="https://www.facebook.com/calambanda"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="p-2.5 bg-white/5 hover:bg-primary rounded-xl text-white transition-colors"
                 aria-label="Facebook"
               >
                 <FacebookIcon className="w-5 h-5" />
               </a>
               <a
-                href="#"
+                href="https://www.instagram.com/calambandaescuela"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="p-2.5 bg-white/5 hover:bg-primary rounded-xl text-white transition-colors"
                 aria-label="Instagram"
               >
                 <InstagramIcon className="w-5 h-5" />
-              </a>
-              <a
-                href="#"
-                className="p-2.5 bg-white/5 hover:bg-primary rounded-xl text-white transition-colors"
-                aria-label="Twitter"
-              >
-                <TwitterIcon className="w-5 h-5" />
               </a>
             </div>
           </div>

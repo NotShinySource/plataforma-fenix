@@ -31,6 +31,7 @@ const ACTUACIONES: Actuacion[] = [
     ],
     // TODO: reemplazar por la descripción oficial del evento.
     descripcion: "Presentación de «Coco un poco loco» en el Teatro Municipal de Calama.",
+    enlaces: [{ etiqueta: "Ver video", url: "https://www.facebook.com/reel/1038820222308490" }],
   },
   {
     id: 2,

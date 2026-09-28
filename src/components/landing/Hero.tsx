@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "motion/react";
 import { BookOpen, ChevronRight, Users } from "lucide-react";
+import Image from "next/image";
 
 export function Hero() {
   return (
@@ -60,10 +61,13 @@ export function Hero() {
               <div className="absolute -inset-4 bg-gradient-to-tr from-primary/10 via-terracotta/10 to-primary-light/10 blur-2xl opacity-60 rounded-[40px] group-hover:scale-105 transition-transform duration-500" />
 
               <div className="relative bg-white p-4 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/50">
-                {/* eslint-disable-next-line @next/next/no-img-element -- imagen externa, sin next.config.remotePatterns configurado para este dominio todavía */}
-                <img
-                  src="https://images.unsplash.com/photo-1465847899084-d164df4dedc6?auto=format&fit=crop&q=80&w=1200"
+                <Image
+                  src="/imagenes/inicio/principal.jpg"
                   alt="Orquesta Juvenil de Calama"
+                  width={1628}
+                  height={1110}
+                  preload
+                  sizes="(min-width: 1024px) 40vw, 100vw"
                   className="w-full h-auto rounded-2xl object-cover aspect-[4/3] shadow-inner"
                 />
 
