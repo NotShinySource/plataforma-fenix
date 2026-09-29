@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
 import { Organizacion } from "@/components/landing/Organizacion";
+import { Escuelas } from "@/components/landing/Escuelas";
 import { Actuaciones } from "@/components/landing/Actuaciones";
 import { Footer } from "@/components/landing/Footer";
 
@@ -10,6 +11,7 @@ export default function LandingPage() {
       <Navbar />
       <Hero />
       <Organizacion />
+      <Escuelas />
       <Actuaciones />
       <Footer />
     </div>

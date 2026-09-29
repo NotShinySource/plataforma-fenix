@@ -8,6 +8,7 @@ import { Menu, Music, X } from "lucide-react";
 const ENLACES = [
   { label: "Inicio", href: "#inicio" },
   { label: "Nuestra Organización", href: "#organizacion" },
+  { label: "Escuelas", href: "#escuelas" },
   { label: "Actuaciones", href: "#actuaciones" },
 ];
 
