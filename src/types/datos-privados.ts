@@ -1,3 +1,5 @@
+import type { Usuario } from "./usuario";
+
 /**
  * Datos personales sensibles de un usuario, ya descifrados. Se guardan en
  * `datos_privados/{uid}` (mismo uid que `usuarios/{uid}`), cifrados campo por
@@ -17,6 +19,13 @@ export interface DatosPrivados {
    */
   fechaNacimiento: string;
 }
+
+/**
+ * Vista del panel de Administración: el usuario más sus datos privados ya
+ * descifrados (`null` si el documento privado falta). Solo la arma el
+ * servidor, para el Administrador.
+ */
+export type UsuarioConDatosPrivados = Usuario & { id: string; datos: DatosPrivados | null };
 
 /** Forma en que se guarda en Firestore: cada dato cifrado con AES-256-GCM. */
 export interface DatosPrivadosCifrados {

@@ -1,17 +1,10 @@
-const DOMINIO_CORREO_SINTETICO = "fenix.local";
-
-/** Deja solo dígitos y dígito verificador, en minúsculas (sin puntos ni guion). */
+/**
+ * Deja solo dígitos y dígito verificador, en minúsculas (sin puntos ni guion).
+ * El identificador de la cuenta de Firebase Auth se deriva de este valor en el
+ * servidor (ver identificadorDesdeRut en src/lib/seguridad/cifrado.ts).
+ */
 export function limpiarRut(rut: string): string {
   return rut.replace(/[.\-]/g, "").toLowerCase();
-}
-
-/**
- * Deriva el correo sintético interno que Firebase Auth exige para el login
- * por RUT (RF-01): el usuario nunca ve ni
- * conoce este correo, solo ingresa su RUT.
- */
-export function emailSinteticoDesdeRut(rut: string): string {
-  return `${limpiarRut(rut)}@${DOMINIO_CORREO_SINTETICO}`;
 }
 
 /** Dígito verificador de un RUT chileno (algoritmo módulo 11) a partir del cuerpo (sin el DV). */

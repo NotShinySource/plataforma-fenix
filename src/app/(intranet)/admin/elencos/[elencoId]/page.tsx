@@ -15,24 +15,33 @@ import {
 } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
 import { listarMiembrosDeElenco, obtenerElenco } from "@/services/elencos.service";
-import { listarUsuarios } from "@/services/usuarios.service";
 import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
 import { agregarMiembroAction, eliminarElencoAction, quitarMiembroAction } from "../actions";
-import type { CargoDocente, ConId, Elenco, MiembroElenco, Usuario } from "@/types";
+import { listarUsuariosConDatosAction } from "../../usuarios/actions";
+import type {
+  CargoDocente,
+  ConId,
+  Elenco,
+  MiembroElenco,
+  UsuarioConDatosPrivados,
+} from "@/types";
 
 const ETIQUETA_CARGO: Record<CargoDocente, string> = {
   titular: "Titular",
   asistente: "Asistente",
 };
 
-function coincideBusqueda(usuario: ConId<Usuario>, termino: string): boolean {
+/** Búsqueda por nombre o RUT. El RUT llega descifrado desde el servidor, solo para el Administrador. */
+function coincideBusqueda(usuario: UsuarioConDatosPrivados, termino: string): boolean {
   const t = termino.trim().toLowerCase();
   if (!t) return true;
+  const rutSinFormato = (usuario.datos?.rut ?? "").replace(/[.\-]/g, "").toLowerCase();
   return (
     usuario.nombres.toLowerCase().includes(t) ||
     usuario.apellidos.toLowerCase().includes(t) ||
-    usuario.rut.toLowerCase().includes(t)
+    (usuario.datos?.rut ?? "").toLowerCase().includes(t) ||
+    rutSinFormato.includes(t.replace(/[.\-]/g, ""))
   );
 }
 
@@ -43,7 +52,7 @@ export default function AdminElencoDetallePage() {
   const [elenco, setElenco] = useState<ConId<Elenco> | null>(null);
   const [membresiasProfesor, setMembresiasProfesor] = useState<ConId<MiembroElenco>[]>([]);
   const [membresiasAlumno, setMembresiasAlumno] = useState<ConId<MiembroElenco>[]>([]);
-  const [usuarios, setUsuarios] = useState<ConId<Usuario>[]>([]);
+  const [usuarios, setUsuarios] = useState<UsuarioConDatosPrivados[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [recargarContador, setRecargarContador] = useState(0);
@@ -72,12 +81,15 @@ export default function AdminElencoDetallePage() {
       setCargando(true);
       setError(null);
       try {
+        const idTokenAdmin = await auth.currentUser?.getIdToken();
+        if (!idTokenAdmin) throw new Error("Sin sesión");
+
         const [elencoResultado, profesoresResultado, alumnosResultado, usuariosResultado] =
           await Promise.all([
             obtenerElenco(elencoId),
             listarMiembrosDeElenco(elencoId, "profesor"),
             listarMiembrosDeElenco(elencoId, "alumno"),
-            listarUsuarios(),
+            listarUsuariosConDatosAction(idTokenAdmin),
           ]);
         if (cancelado) return;
 
@@ -85,11 +97,15 @@ export default function AdminElencoDetallePage() {
           setError("El elenco no existe.");
           return;
         }
+        if (!usuariosResultado.ok || !usuariosResultado.usuarios) {
+          setError(usuariosResultado.error ?? "No se pudo cargar la lista de usuarios.");
+          return;
+        }
 
         setElenco(elencoResultado);
         setMembresiasProfesor(profesoresResultado);
         setMembresiasAlumno(alumnosResultado);
-        setUsuarios(usuariosResultado);
+        setUsuarios(usuariosResultado.usuarios);
       } catch {
         if (!cancelado) setError("No se pudo cargar el elenco.");
       } finally {
@@ -363,7 +379,7 @@ export default function AdminElencoDetallePage() {
                   <div key={membresia.id} className="p-4 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-bold text-text-dark truncate">{nombreCompleto}</p>
-                      <p className="text-xs text-slate-600 font-mono">{usuarioMiembro.rut}</p>
+                      <p className="text-xs text-slate-600 font-mono">{usuarioMiembro.datos?.rut ?? "—"}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className="bg-terracotta/10 text-terracotta px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
@@ -410,7 +426,7 @@ export default function AdminElencoDetallePage() {
                 </option>
                 {candidatosProfesor.map((candidato) => (
                   <option key={candidato.id} value={candidato.id}>
-                    {candidato.nombres} {candidato.apellidos} — {candidato.rut}
+                    {candidato.nombres} {candidato.apellidos} — {candidato.datos?.rut ?? "sin RUT"}
                   </option>
                 ))}
               </select>
@@ -467,7 +483,7 @@ export default function AdminElencoDetallePage() {
                   <div key={membresia.id} className="p-4 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-bold text-text-dark truncate">{nombreCompleto}</p>
-                      <p className="text-xs text-slate-600 font-mono">{usuarioMiembro.rut}</p>
+                      <p className="text-xs text-slate-600 font-mono">{usuarioMiembro.datos?.rut ?? "—"}</p>
                     </div>
                     <button
                       type="button"
@@ -509,7 +525,7 @@ export default function AdminElencoDetallePage() {
                 </option>
                 {candidatosAlumno.map((candidato) => (
                   <option key={candidato.id} value={candidato.id}>
-                    {candidato.nombres} {candidato.apellidos} — {candidato.rut}
+                    {candidato.nombres} {candidato.apellidos} — {candidato.datos?.rut ?? "sin RUT"}
                   </option>
                 ))}
               </select>

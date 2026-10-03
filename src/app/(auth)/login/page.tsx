@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { Lock, Music } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
-import { emailSinteticoDesdeRut, rutEsValido } from "@/lib/auth/rut";
+import { rutEsValido } from "@/lib/auth/rut";
 import { formatearRutInput } from "@/lib/format";
 import { useAuth } from "@/context/AuthContext";
 import type { RolUsuario } from "@/types";
+import { obtenerIdentificadorAction } from "./actions";
 
 const RUTA_POR_ROL: Record<RolUsuario, string> = {
   alumno: "/alumno",
@@ -45,8 +46,11 @@ export default function LoginPage() {
     setEnviando(true);
 
     try {
-      const email = emailSinteticoDesdeRut(rut);
-      const credencial = await signInWithEmailAndPassword(auth, email, password);
+      // El identificador de la cuenta se deriva del RUT en el servidor (usa
+      // una clave secreta): así la consola de Firebase no muestra RUT.
+      const resultado = await obtenerIdentificadorAction(rut);
+      if (!resultado.ok) throw new Error("RUT inválido");
+      const credencial = await signInWithEmailAndPassword(auth, resultado.identificador, password);
       const resultadoToken = await credencial.user.getIdTokenResult();
       const rolUsuario = resultadoToken.claims.rol as RolUsuario | undefined;
 

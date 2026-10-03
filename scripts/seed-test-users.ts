@@ -1,8 +1,12 @@
 /**
  * Seed de datos de prueba para desarrollo local contra el EMULADOR de Firebase.
- * Crea un usuario alumno y un usuario profesor (Auth + usuarios/{uid} + custom
- * claim de rol), un elenco de prueba y las membresías en miembros_elenco que
- * conectan a ambos con ese elenco, según el modelo de datos del proyecto.
+ * Crea un usuario alumno y un usuario profesor (cuenta de Auth con el
+ * identificador derivado del RUT + custom claim de rol + usuarios/{uid} +
+ * datos_privados/{uid} cifrado), un elenco de prueba y las membresías en
+ * miembros_elenco que conectan a ambos con ese elenco.
+ *
+ * Las cuentas quedan "activadas" con contraseña conocida, para probar el
+ * login sin pasar por el flujo de activación.
  *
  * Uso: npm run seed
  *
@@ -21,7 +25,9 @@ import {
   getFirestore,
   type WithFieldValue,
 } from "firebase-admin/firestore";
-import { emailSinteticoDesdeRut } from "../src/lib/auth/rut";
+import { identificadorDesdeRut } from "../src/lib/seguridad/cifrado";
+import { cifrarDatosPrivados } from "../src/lib/seguridad/datos-privados";
+import type { DatosPrivados } from "../src/types/datos-privados";
 import type { Elenco, MiembroElenco, RolEnElenco } from "../src/types/elenco";
 import type { RolUsuario, Usuario } from "../src/types/usuario";
 
@@ -54,13 +60,11 @@ const dbAdmin = getFirestore(app);
 
 const ELENCO_ID_PRUEBA = "elenco-seed-prueba";
 
-interface DatosUsuarioPrueba {
-  rut: string;
+interface DatosUsuarioPrueba extends DatosPrivados {
   nombres: string;
   apellidos: string;
   rol: RolUsuario;
   password: string;
-  fechaNacimiento: Date;
 }
 
 function esErrorConCodigo(error: unknown, codigo: string): boolean {
@@ -72,24 +76,23 @@ function esErrorConCodigo(error: unknown, codigo: string): boolean {
   );
 }
 
+/** Sin displayName a propósito: el nombre no debe verse en la consola de Authentication. */
 async function crearOActualizarUsuarioAuth(
   datos: DatosUsuarioPrueba,
-  email: string
+  identificador: string
 ): Promise<string> {
-  const displayName = `${datos.nombres} ${datos.apellidos}`;
   try {
     const usuarioCreado = await authAdmin.createUser({
-      email,
+      email: identificador,
       password: datos.password,
-      displayName,
     });
     return usuarioCreado.uid;
   } catch (error) {
     if (esErrorConCodigo(error, "auth/email-already-exists")) {
-      const usuarioExistente = await authAdmin.getUserByEmail(email);
+      const usuarioExistente = await authAdmin.getUserByEmail(identificador);
       await authAdmin.updateUser(usuarioExistente.uid, {
         password: datos.password,
-        displayName,
+        displayName: null,
       });
       return usuarioExistente.uid;
     }
@@ -99,30 +102,39 @@ async function crearOActualizarUsuarioAuth(
 
 async function seedUsuario(
   datos: DatosUsuarioPrueba
-): Promise<{ uid: string; email: string }> {
-  const email = emailSinteticoDesdeRut(datos.rut);
-  const uid = await crearOActualizarUsuarioAuth(datos, email);
+): Promise<{ uid: string; identificador: string }> {
+  const identificador = identificadorDesdeRut(datos.rut);
+  const uid = await crearOActualizarUsuarioAuth(datos, identificador);
 
   await authAdmin.setCustomUserClaims(uid, { rol: datos.rol });
 
   const usuario: WithFieldValue<Usuario> = {
-    rut: datos.rut,
     nombres: datos.nombres,
     apellidos: datos.apellidos,
-    email,
     rol: datos.rol,
     activo: true,
-    // Dato provisto por el usuario, no de creación: Date directo, ambos SDKs
-    // lo serializan como Timestamp automáticamente al escribir.
-    fechaNacimiento: datos.fechaNacimiento,
+    estadoActivacion: "activada",
     // Fecha de creación: la define el servidor,
     // nunca el reloj de quien ejecuta este script.
     fechaCreacion: FieldValue.serverTimestamp(),
   };
 
-  await dbAdmin.collection("usuarios").doc(uid).set(usuario);
+  const privados: DatosPrivados = {
+    rut: datos.rut,
+    fechaNacimiento: datos.fechaNacimiento,
+    ...(datos.email ? { email: datos.email } : {}),
+    ...(datos.emailApoderado ? { emailApoderado: datos.emailApoderado } : {}),
+  };
 
-  return { uid, email };
+  const batch = dbAdmin.batch();
+  batch.set(dbAdmin.collection("usuarios").doc(uid), usuario);
+  batch.set(dbAdmin.collection("datos_privados").doc(uid), {
+    ...cifrarDatosPrivados(privados),
+    fechaActualizacion: FieldValue.serverTimestamp(),
+  });
+  await batch.commit();
+
+  return { uid, identificador };
 }
 
 async function seedElenco(docenteResponsableId: string): Promise<string> {
@@ -167,7 +179,9 @@ async function main() {
     apellidos: "De Prueba",
     rol: "alumno",
     password: "Alumno123!",
-    fechaNacimiento: new Date("2014-03-15"),
+    fechaNacimiento: "2014-03-15",
+    email: "alumno.prueba@example.com",
+    emailApoderado: "apoderado.prueba@example.com",
   };
 
   const profesorDatos: DatosUsuarioPrueba = {
@@ -176,7 +190,8 @@ async function main() {
     apellidos: "De Prueba",
     rol: "profesor",
     password: "Profesor123!",
-    fechaNacimiento: new Date("1988-07-20"),
+    fechaNacimiento: "1988-07-20",
+    email: "profesor.prueba@example.com",
   };
 
   console.log("Creando usuarios de prueba en el emulador de Firebase...\n");
@@ -192,12 +207,12 @@ async function main() {
   console.log("── Alumno ──────────────────────────");
   console.log(`  RUT:           ${alumnoDatos.rut}`);
   console.log(`  Contraseña:    ${alumnoDatos.password}`);
-  console.log(`  Email interno: ${alumno.email}`);
+  console.log(`  Identificador: ${alumno.identificador}`);
   console.log(`  UID:           ${alumno.uid}`);
   console.log("\n── Profesor ────────────────────────");
   console.log(`  RUT:           ${profesorDatos.rut}`);
   console.log(`  Contraseña:    ${profesorDatos.password}`);
-  console.log(`  Email interno: ${profesor.email}`);
+  console.log(`  Identificador: ${profesor.identificador}`);
   console.log(`  UID:           ${profesor.uid}`);
   console.log(`\nElenco de prueba: ${elencoId} (ambos usuarios son miembros)`);
 
