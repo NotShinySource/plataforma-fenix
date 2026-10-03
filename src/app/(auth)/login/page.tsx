@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { Lock, Music } from "lucide-react";
@@ -143,12 +144,12 @@ export default function LoginPage() {
             </button>
 
             <div className="text-center pt-2">
-              <a
-                href="#"
+              <Link
+                href="/acceso"
                 className="text-sm text-slate-600 hover:text-terracotta font-semibold transition-colors"
               >
-                ¿Problemas con tu clave? Contacta a Soporte
-              </a>
+                ¿Primera vez o olvidaste tu contraseña?
+              </Link>
             </div>
           </form>
         </div>

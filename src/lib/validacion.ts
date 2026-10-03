@@ -5,6 +5,7 @@
  */
 
 export const LONGITUD_MAXIMA_EMAIL = 254;
+export const LONGITUD_MINIMA_PASSWORD = 8;
 
 /** Formato razonable de correo: algo@dominio.tld, sin espacios. No verifica que exista. */
 export function esEmailValido(email: string): boolean {
