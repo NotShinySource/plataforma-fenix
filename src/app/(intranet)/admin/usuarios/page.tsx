@@ -6,7 +6,10 @@ import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import {
   ArrowLeft,
   AlertTriangle,
+  Check,
   CheckCircle2,
+  Copy,
+  KeyRound,
   UserPlus,
   Pencil,
   Trash2,
@@ -22,6 +25,7 @@ import {
   crearUsuarioAction,
   editarUsuarioAction,
   eliminarUsuarioAction,
+  generarEnlaceAccesoAction,
   listarUsuariosConDatosAction,
   type RolCreable,
 } from "./actions";
@@ -153,6 +157,13 @@ export default function AdminUsuariosPage() {
   const [emailApoderadoEditar, setEmailApoderadoEditar] = useState("");
   const [editando, setEditando] = useState(false);
   const [errorEditar, setErrorEditar] = useState<string | null>(null);
+
+  // Plan B del correo: enlace de acceso generado para entregar en persona.
+  const [usuarioEnlace, setUsuarioEnlace] = useState<UsuarioConDatosPrivados | null>(null);
+  const [enlace, setEnlace] = useState<{ url: string; esActivacion: boolean } | null>(null);
+  const [generandoEnlace, setGenerandoEnlace] = useState(false);
+  const [errorEnlace, setErrorEnlace] = useState<string | null>(null);
+  const [enlaceCopiado, setEnlaceCopiado] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -330,6 +341,48 @@ export default function AdminUsuariosPage() {
     }
   }
 
+  async function abrirModalEnlace(usuarioObjetivo: UsuarioConDatosPrivados) {
+    if (!auth.currentUser) return;
+
+    setUsuarioEnlace(usuarioObjetivo);
+    setEnlace(null);
+    setErrorEnlace(null);
+    setEnlaceCopiado(false);
+    setGenerandoEnlace(true);
+
+    try {
+      const idTokenAdmin = await auth.currentUser.getIdToken();
+      const resultado = await generarEnlaceAccesoAction({ uid: usuarioObjetivo.id, idTokenAdmin });
+
+      if (!resultado.ok || !resultado.enlace) {
+        setErrorEnlace(resultado.error ?? "No se pudo generar el enlace.");
+        return;
+      }
+      setEnlace({ url: resultado.enlace, esActivacion: resultado.esActivacion ?? false });
+    } catch {
+      setErrorEnlace("No se pudo generar el enlace. Intenta de nuevo.");
+    } finally {
+      setGenerandoEnlace(false);
+    }
+  }
+
+  function cerrarModalEnlace() {
+    setUsuarioEnlace(null);
+    setEnlace(null);
+    setErrorEnlace(null);
+  }
+
+  async function copiarEnlace() {
+    if (!enlace) return;
+    try {
+      await navigator.clipboard.writeText(enlace.url);
+      setEnlaceCopiado(true);
+      setTimeout(() => setEnlaceCopiado(false), 2000);
+    } catch {
+      // Sin permiso de portapapeles: el enlace sigue visible para copiarlo a mano.
+    }
+  }
+
   return (
     <main className="min-h-screen bg-surface p-4 sm:p-8">
       <div className="max-w-xl mx-auto">
@@ -486,7 +539,7 @@ export default function AdminUsuariosPage() {
         )}
       </div>
 
-      <div className="max-w-4xl mx-auto mt-10">
+      <div className="max-w-5xl mx-auto mt-10">
         <div className="flex items-center gap-3 mb-6">
           <div className="bg-primary/10 p-2.5 rounded-xl text-primary">
             <Users className="w-6 h-6" />
@@ -562,6 +615,16 @@ export default function AdminUsuariosPage() {
                               <Pencil className="w-3.5 h-3.5" />
                               Editar
                             </button>
+                            {usuarioFila.rol !== "administrador" && (
+                              <button
+                                type="button"
+                                onClick={() => abrirModalEnlace(usuarioFila)}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition-all"
+                              >
+                                <KeyRound className="w-3.5 h-3.5" />
+                                Enlace
+                              </button>
+                            )}
                             {usuarioFila.rol !== "administrador" && (
                               <button
                                 type="button"
@@ -643,6 +706,72 @@ export default function AdminUsuariosPage() {
                 {eliminando ? "Eliminando..." : "Eliminar"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {usuarioEnlace && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-6 sm:p-8">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-primary/10 p-2.5 rounded-xl text-primary flex-shrink-0">
+                <KeyRound className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-black text-lg text-text-dark leading-tight">Enlace de acceso</h2>
+                <p className="text-sm text-slate-600 font-semibold truncate">
+                  {usuarioEnlace.nombres} {usuarioEnlace.apellidos}
+                </p>
+              </div>
+            </div>
+
+            {generandoEnlace && (
+              <p className="text-sm text-slate-600 font-semibold py-4 text-center">
+                Generando enlace...
+              </p>
+            )}
+
+            {errorEnlace && (
+              <p
+                role="alert"
+                className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mb-4"
+              >
+                {errorEnlace}
+              </p>
+            )}
+
+            {enlace && (
+              <>
+                <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+                  Con este enlace el usuario puede{" "}
+                  {enlace.esActivacion ? "crear su contraseña" : "restablecer su contraseña"} sin
+                  usar el correo. Entrégalo solo a esa persona o a su apoderado: funciona una
+                  sola vez y vence en poco tiempo.
+                </p>
+
+                <div className="flex items-start gap-2 mb-4">
+                  <p className="font-mono text-xs text-text-dark bg-slate-50 rounded-xl px-4 py-3 flex-1 break-all">
+                    {enlace.url}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={copiarEnlace}
+                    className="shrink-0 bg-primary/10 hover:bg-primary/20 text-primary p-2.5 rounded-xl transition-all"
+                    aria-label="Copiar enlace"
+                  >
+                    {enlaceCopiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+              </>
+            )}
+
+            <button
+              type="button"
+              onClick={cerrarModalEnlace}
+              className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 py-3 rounded-2xl font-bold text-sm transition-all"
+            >
+              Cerrar
+            </button>
           </div>
         </div>
       )}

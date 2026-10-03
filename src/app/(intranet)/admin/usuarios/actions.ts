@@ -4,6 +4,7 @@ import { randomBytes } from "crypto";
 import { FieldValue, type WithFieldValue } from "firebase-admin/firestore";
 import { authAdmin, dbAdmin } from "@/lib/firebase/admin";
 import { timestampADate } from "@/lib/firebase/converters";
+import { generarEnlaceEstablecerContrasena } from "@/lib/auth/enlace-acceso";
 import { rutEsValido } from "@/lib/auth/rut";
 import { verificarAdmin } from "@/lib/auth/verificar-admin";
 import { formatearRutInput } from "@/lib/format";
@@ -319,6 +320,64 @@ export async function editarUsuarioAction(input: EditarUsuarioInput): Promise<Re
     }
     console.error("Error editando usuario desde Admin:", error);
     return { ok: false, error: "No se pudo editar el usuario. Intenta de nuevo." };
+  }
+}
+
+export interface GenerarEnlaceAccesoInput {
+  uid: string;
+  idTokenAdmin: string;
+}
+
+export interface GenerarEnlaceAccesoResultado extends ResultadoAccion {
+  enlace?: string;
+  /** true si la cuenta todavía no fue activada (el enlace sirve para crear la primera contraseña). */
+  esActivacion?: boolean;
+}
+
+/**
+ * Alternativa al correo: genera el mismo enlace de un solo uso para crear o
+ * restablecer la contraseña y lo devuelve al Administrador, que lo entrega
+ * en persona (por ejemplo, si el apoderado perdió acceso a su correo).
+ *
+ * No se permite para cuentas de administrador: quien tenga el enlace puede
+ * fijar la contraseña, y eso dejaría a un administrador tomar la cuenta de
+ * otro. Un administrador recupera la suya por el flujo normal con su correo.
+ */
+export async function generarEnlaceAccesoAction(
+  input: GenerarEnlaceAccesoInput
+): Promise<GenerarEnlaceAccesoResultado> {
+  const verificacion = await verificarAdmin(input.idTokenAdmin);
+  if (!verificacion.ok) {
+    return { ok: false, error: verificacion.error };
+  }
+  if (!input.uid) return { ok: false, error: "Solicitud inválida." };
+
+  try {
+    const usuarioAuth = await authAdmin.getUser(input.uid);
+    if (usuarioAuth.customClaims?.rol === "administrador") {
+      return { ok: false, error: "No se puede generar un enlace para un administrador." };
+    }
+    if (!usuarioAuth.email) {
+      return { ok: false, error: "La cuenta no tiene un identificador válido." };
+    }
+
+    const usuarioDoc = await dbAdmin.collection("usuarios").doc(input.uid).get();
+    if (!usuarioDoc.exists) {
+      return { ok: false, error: "El usuario ya no existe." };
+    }
+
+    const enlace = await generarEnlaceEstablecerContrasena(usuarioAuth.email);
+    return {
+      ok: true,
+      enlace,
+      esActivacion: usuarioDoc.data()?.estadoActivacion !== "activada",
+    };
+  } catch (error) {
+    if (esErrorConCodigo(error, "auth/user-not-found")) {
+      return { ok: false, error: "El usuario ya no existe." };
+    }
+    console.error("Error generando el enlace de acceso desde Admin:", error);
+    return { ok: false, error: "No se pudo generar el enlace. Intenta de nuevo." };
   }
 }
 
