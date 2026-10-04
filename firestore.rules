@@ -62,5 +62,18 @@ service cloud.firestore {
         allow write: if autenticado() && request.auth.uid == alumnoId;
       }
     }
+
+    // Datos personales cifrados (RUT, correos, fecha de nacimiento) y el
+    // contador de solicitudes de acceso: solo los usa el servidor con el
+    // Admin SDK, que no pasa por estas reglas. Desde el navegador no se puede
+    // leer ni escribir nada, ni siquiera el propio documento. Explícito a
+    // propósito, aunque sin estas reglas ya quedarían denegados por defecto.
+    match /datos_privados/{uid} {
+      allow read, write: if false;
+    }
+
+    match /solicitudes_acceso/{uid} {
+      allow read, write: if false;
+    }
   }
 }

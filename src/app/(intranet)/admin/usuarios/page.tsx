@@ -2,16 +2,15 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import {
-  EmailAuthProvider,
-  reauthenticateWithCredential,
-} from "firebase/auth";
+import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import {
   ArrowLeft,
   AlertTriangle,
-  UserPlus,
-  Copy,
   Check,
+  CheckCircle2,
+  Copy,
+  KeyRound,
+  UserPlus,
   Pencil,
   Trash2,
   Users,
@@ -19,7 +18,6 @@ import {
 import { auth } from "@/lib/firebase/client";
 import { formatearRutInput } from "@/lib/format";
 import { rutEsValido } from "@/lib/auth/rut";
-import { listarUsuarios } from "@/services/usuarios.service";
 import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
@@ -27,14 +25,11 @@ import {
   crearUsuarioAction,
   editarUsuarioAction,
   eliminarUsuarioAction,
+  generarEnlaceAccesoAction,
+  listarUsuariosConDatosAction,
   type RolCreable,
 } from "./actions";
-import type { ConId, RolUsuario, Usuario } from "@/types";
-
-interface UsuarioCreado {
-  email: string;
-  password: string;
-}
+import type { EstadoActivacion, RolUsuario, UsuarioConDatosPrivados } from "@/types";
 
 const ETIQUETA_ROL: Record<RolUsuario, string> = {
   alumno: "Alumno",
@@ -42,31 +37,133 @@ const ETIQUETA_ROL: Record<RolUsuario, string> = {
   administrador: "Administrador",
 };
 
+const ETIQUETA_ESTADO: Record<EstadoActivacion, { texto: string; estilo: string }> = {
+  pendiente: { texto: "Pendiente", estilo: "bg-amber-50 text-amber-700" },
+  activada: { texto: "Activa", estilo: "bg-emerald-50 text-emerald-700" },
+};
+
+const CLASE_INPUT =
+  "w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-base font-medium text-text-dark placeholder:text-slate-500";
+const CLASE_LABEL = "block text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 px-1";
+
+/** Fecha de hoy en formato YYYY-MM-DD, para el máximo del selector de fecha. */
+function hoyIso(): string {
+  const ahora = new Date();
+  const mes = String(ahora.getMonth() + 1).padStart(2, "0");
+  const dia = String(ahora.getDate()).padStart(2, "0");
+  return `${ahora.getFullYear()}-${mes}-${dia}`;
+}
+
+interface CamposContactoProps {
+  rol: RolUsuario;
+  prefijoId: string;
+  email: string;
+  emailApoderado: string;
+  onEmail: (valor: string) => void;
+  onEmailApoderado: (valor: string) => void;
+}
+
+/** Correos según el rol: alumno → apoderado obligatorio + propio opcional; resto → propio obligatorio. */
+function CamposContacto({
+  rol,
+  prefijoId,
+  email,
+  emailApoderado,
+  onEmail,
+  onEmailApoderado,
+}: CamposContactoProps) {
+  if (rol === "alumno") {
+    return (
+      <>
+        <div>
+          <label htmlFor={`${prefijoId}-emailApoderado`} className={CLASE_LABEL}>
+            Correo del apoderado
+          </label>
+          <input
+            id={`${prefijoId}-emailApoderado`}
+            type="email"
+            value={emailApoderado}
+            onChange={(evento) => onEmailApoderado(evento.target.value)}
+            required
+            maxLength={254}
+            placeholder="apoderado@gmail.com"
+            className={CLASE_INPUT}
+          />
+        </div>
+        <div>
+          <label htmlFor={`${prefijoId}-email`} className={CLASE_LABEL}>
+            Correo del estudiante <span className="normal-case font-semibold">(opcional)</span>
+          </label>
+          <input
+            id={`${prefijoId}-email`}
+            type="email"
+            value={email}
+            onChange={(evento) => onEmail(evento.target.value)}
+            maxLength={254}
+            placeholder="estudiante@gmail.com"
+            className={CLASE_INPUT}
+          />
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <div>
+      <label htmlFor={`${prefijoId}-email`} className={CLASE_LABEL}>
+        Correo
+      </label>
+      <input
+        id={`${prefijoId}-email`}
+        type="email"
+        value={email}
+        onChange={(evento) => onEmail(evento.target.value)}
+        required
+        maxLength={254}
+        placeholder="docente@gmail.com"
+        className={CLASE_INPUT}
+      />
+    </div>
+  );
+}
+
 export default function AdminUsuariosPage() {
   const [nombres, setNombres] = useState("");
   const [apellidos, setApellidos] = useState("");
   const [rut, setRut] = useState("");
   const [rol, setRol] = useState<RolCreable>("alumno");
+  const [fechaNacimiento, setFechaNacimiento] = useState("");
+  const [email, setEmail] = useState("");
+  const [emailApoderado, setEmailApoderado] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [creado, setCreado] = useState<UsuarioCreado | null>(null);
-  const [copiado, setCopiado] = useState(false);
+  const [creadoNombre, setCreadoNombre] = useState<string | null>(null);
 
-  const [usuarios, setUsuarios] = useState<ConId<Usuario>[]>([]);
+  const [usuarios, setUsuarios] = useState<UsuarioConDatosPrivados[]>([]);
   const [cargandoUsuarios, setCargandoUsuarios] = useState(true);
   const [errorUsuarios, setErrorUsuarios] = useState<string | null>(null);
   const [recargarContador, setRecargarContador] = useState(0);
 
-  const [usuarioAEliminar, setUsuarioAEliminar] = useState<ConId<Usuario> | null>(null);
+  const [usuarioAEliminar, setUsuarioAEliminar] = useState<UsuarioConDatosPrivados | null>(null);
   const [passwordAdmin, setPasswordAdmin] = useState("");
   const [eliminando, setEliminando] = useState(false);
   const [errorEliminar, setErrorEliminar] = useState<string | null>(null);
 
-  const [usuarioAEditar, setUsuarioAEditar] = useState<ConId<Usuario> | null>(null);
+  const [usuarioAEditar, setUsuarioAEditar] = useState<UsuarioConDatosPrivados | null>(null);
   const [nombresEditar, setNombresEditar] = useState("");
   const [apellidosEditar, setApellidosEditar] = useState("");
+  const [fechaEditar, setFechaEditar] = useState("");
+  const [emailEditar, setEmailEditar] = useState("");
+  const [emailApoderadoEditar, setEmailApoderadoEditar] = useState("");
   const [editando, setEditando] = useState(false);
   const [errorEditar, setErrorEditar] = useState<string | null>(null);
+
+  // Plan B del correo: enlace de acceso generado para entregar en persona.
+  const [usuarioEnlace, setUsuarioEnlace] = useState<UsuarioConDatosPrivados | null>(null);
+  const [enlace, setEnlace] = useState<{ url: string; esActivacion: boolean } | null>(null);
+  const [generandoEnlace, setGenerandoEnlace] = useState(false);
+  const [errorEnlace, setErrorEnlace] = useState<string | null>(null);
+  const [enlaceCopiado, setEnlaceCopiado] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -75,8 +172,15 @@ export default function AdminUsuariosPage() {
       setCargandoUsuarios(true);
       setErrorUsuarios(null);
       try {
-        const resultado = await listarUsuarios();
-        if (!cancelado) setUsuarios(resultado);
+        const idTokenAdmin = await auth.currentUser?.getIdToken();
+        if (!idTokenAdmin) throw new Error("Sin sesión");
+        const resultado = await listarUsuariosConDatosAction(idTokenAdmin);
+        if (cancelado) return;
+        if (!resultado.ok || !resultado.usuarios) {
+          setErrorUsuarios(resultado.error ?? "No se pudo cargar la lista de usuarios.");
+          return;
+        }
+        setUsuarios(resultado.usuarios);
       } catch {
         if (!cancelado) setErrorUsuarios("No se pudo cargar la lista de usuarios.");
       } finally {
@@ -94,33 +198,50 @@ export default function AdminUsuariosPage() {
   async function handleSubmit(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     setError(null);
-    setCreado(null);
+    setCreadoNombre(null);
 
     if (!rutEsValido(rut)) {
       setError("El RUT ingresado no es válido (dígito verificador incorrecto).");
       return;
     }
+    if (!auth.currentUser) return;
 
     setEnviando(true);
+    try {
+      const idTokenAdmin = await auth.currentUser.getIdToken();
+      const resultado = await crearUsuarioAction({
+        nombres,
+        apellidos,
+        rut,
+        rol,
+        fechaNacimiento,
+        email,
+        emailApoderado: rol === "alumno" ? emailApoderado : "",
+        idTokenAdmin,
+      });
 
-    const resultado = await crearUsuarioAction({ nombres, apellidos, rut, rol });
+      if (!resultado.ok) {
+        setError(resultado.error ?? "No se pudo crear el usuario.");
+        return;
+      }
 
-    if (!resultado.ok || !resultado.email || !resultado.password) {
-      setError(resultado.error ?? "No se pudo crear el usuario.");
+      setCreadoNombre(`${nombres.trim()} ${apellidos.trim()}`);
+      setNombres("");
+      setApellidos("");
+      setRut("");
+      setRol("alumno");
+      setFechaNacimiento("");
+      setEmail("");
+      setEmailApoderado("");
+      setRecargarContador((contador) => contador + 1);
+    } catch {
+      setError("No se pudo crear el usuario. Intenta de nuevo.");
+    } finally {
       setEnviando(false);
-      return;
     }
-
-    setCreado({ email: resultado.email, password: resultado.password });
-    setNombres("");
-    setApellidos("");
-    setRut("");
-    setRol("alumno");
-    setEnviando(false);
-    setRecargarContador((contador) => contador + 1);
   }
 
-  function abrirModalEliminar(usuarioObjetivo: ConId<Usuario>) {
+  function abrirModalEliminar(usuarioObjetivo: UsuarioConDatosPrivados) {
     setUsuarioAEliminar(usuarioObjetivo);
     setPasswordAdmin("");
     setErrorEliminar(null);
@@ -171,10 +292,13 @@ export default function AdminUsuariosPage() {
     }
   }
 
-  function abrirModalEditar(usuarioObjetivo: ConId<Usuario>) {
+  function abrirModalEditar(usuarioObjetivo: UsuarioConDatosPrivados) {
     setUsuarioAEditar(usuarioObjetivo);
     setNombresEditar(usuarioObjetivo.nombres);
     setApellidosEditar(usuarioObjetivo.apellidos);
+    setFechaEditar(usuarioObjetivo.datos?.fechaNacimiento ?? "");
+    setEmailEditar(usuarioObjetivo.datos?.email ?? "");
+    setEmailApoderadoEditar(usuarioObjetivo.datos?.emailApoderado ?? "");
     setErrorEditar(null);
   }
 
@@ -196,6 +320,9 @@ export default function AdminUsuariosPage() {
         uid: usuarioAEditar.id,
         nombres: nombresEditar,
         apellidos: apellidosEditar,
+        fechaNacimiento: fechaEditar,
+        email: emailEditar,
+        emailApoderado: usuarioAEditar.rol === "alumno" ? emailApoderadoEditar : "",
         idTokenAdmin,
       });
 
@@ -214,14 +341,45 @@ export default function AdminUsuariosPage() {
     }
   }
 
-  async function copiarPassword() {
-    if (!creado) return;
+  async function abrirModalEnlace(usuarioObjetivo: UsuarioConDatosPrivados) {
+    if (!auth.currentUser) return;
+
+    setUsuarioEnlace(usuarioObjetivo);
+    setEnlace(null);
+    setErrorEnlace(null);
+    setEnlaceCopiado(false);
+    setGenerandoEnlace(true);
+
     try {
-      await navigator.clipboard.writeText(creado.password);
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 2000);
+      const idTokenAdmin = await auth.currentUser.getIdToken();
+      const resultado = await generarEnlaceAccesoAction({ uid: usuarioObjetivo.id, idTokenAdmin });
+
+      if (!resultado.ok || !resultado.enlace) {
+        setErrorEnlace(resultado.error ?? "No se pudo generar el enlace.");
+        return;
+      }
+      setEnlace({ url: resultado.enlace, esActivacion: resultado.esActivacion ?? false });
     } catch {
-      // Sin permiso de portapapeles: la contraseña sigue visible en pantalla.
+      setErrorEnlace("No se pudo generar el enlace. Intenta de nuevo.");
+    } finally {
+      setGenerandoEnlace(false);
+    }
+  }
+
+  function cerrarModalEnlace() {
+    setUsuarioEnlace(null);
+    setEnlace(null);
+    setErrorEnlace(null);
+  }
+
+  async function copiarEnlace() {
+    if (!enlace) return;
+    try {
+      await navigator.clipboard.writeText(enlace.url);
+      setEnlaceCopiado(true);
+      setTimeout(() => setEnlaceCopiado(false), 2000);
+    } catch {
+      // Sin permiso de portapapeles: el enlace sigue visible para copiarlo a mano.
     }
   }
 
@@ -241,12 +399,8 @@ export default function AdminUsuariosPage() {
             <UserPlus className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="font-black text-xl text-text-dark leading-tight">
-              Crear Usuario
-            </h1>
-            <p className="text-slate-600 text-sm font-semibold">
-              Alta de alumnos y profesores
-            </p>
+            <h1 className="font-black text-xl text-text-dark leading-tight">Crear Usuario</h1>
+            <p className="text-slate-600 text-sm font-semibold">Alta de alumnos y profesores</p>
           </div>
         </div>
 
@@ -256,10 +410,24 @@ export default function AdminUsuariosPage() {
           noValidate
         >
           <div>
-            <label
-              htmlFor="nombres"
-              className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 px-1"
+            <label htmlFor="rol" className={CLASE_LABEL}>
+              Rol
+            </label>
+            <select
+              id="rol"
+              name="rol"
+              value={rol}
+              onChange={(evento) => setRol(evento.target.value as RolCreable)}
+              required
+              className={CLASE_INPUT}
             >
+              <option value="alumno">Alumno</option>
+              <option value="profesor">Profesor</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="nombres" className={CLASE_LABEL}>
               Nombres
             </label>
             <input
@@ -270,15 +438,12 @@ export default function AdminUsuariosPage() {
               onChange={(evento) => setNombres(evento.target.value)}
               required
               maxLength={100}
-              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-base font-medium text-text-dark placeholder:text-slate-500"
+              className={CLASE_INPUT}
             />
           </div>
 
           <div>
-            <label
-              htmlFor="apellidos"
-              className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 px-1"
-            >
+            <label htmlFor="apellidos" className={CLASE_LABEL}>
               Apellidos
             </label>
             <input
@@ -289,15 +454,12 @@ export default function AdminUsuariosPage() {
               onChange={(evento) => setApellidos(evento.target.value)}
               required
               maxLength={100}
-              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-base font-medium text-text-dark placeholder:text-slate-500"
+              className={CLASE_INPUT}
             />
           </div>
 
           <div>
-            <label
-              htmlFor="rut"
-              className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 px-1"
-            >
+            <label htmlFor="rut" className={CLASE_LABEL}>
               RUT
             </label>
             <input
@@ -309,29 +471,35 @@ export default function AdminUsuariosPage() {
               onChange={(evento) => setRut(formatearRutInput(evento.target.value))}
               required
               maxLength={12}
-              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-base font-medium text-text-dark placeholder:text-slate-500"
+              className={CLASE_INPUT}
             />
           </div>
 
           <div>
-            <label
-              htmlFor="rol"
-              className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 px-1"
-            >
-              Rol
+            <label htmlFor="fechaNacimiento" className={CLASE_LABEL}>
+              Fecha de nacimiento
             </label>
-            <select
-              id="rol"
-              name="rol"
-              value={rol}
-              onChange={(evento) => setRol(evento.target.value as RolCreable)}
+            <input
+              id="fechaNacimiento"
+              name="fechaNacimiento"
+              type="date"
+              value={fechaNacimiento}
+              onChange={(evento) => setFechaNacimiento(evento.target.value)}
               required
-              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-base font-medium text-text-dark"
-            >
-              <option value="alumno">Alumno</option>
-              <option value="profesor">Profesor</option>
-            </select>
+              min="1900-01-01"
+              max={hoyIso()}
+              className={CLASE_INPUT}
+            />
           </div>
+
+          <CamposContacto
+            rol={rol}
+            prefijoId="crear"
+            email={email}
+            emailApoderado={emailApoderado}
+            onEmail={setEmail}
+            onEmailApoderado={setEmailApoderado}
+          />
 
           {error && (
             <p
@@ -351,61 +519,33 @@ export default function AdminUsuariosPage() {
           </button>
         </form>
 
-        {creado && (
-          <div className="mt-6 bg-white rounded-[24px] shadow-xl border border-emerald-100 p-6 sm:p-8">
-            <h2 className="font-black text-lg text-text-dark mb-1">
-              Usuario creado correctamente
-            </h2>
-            <p className="text-sm text-slate-600 font-semibold mb-4">
-              Copia la contraseña ahora — no se volverá a mostrar.
-            </p>
-
-            <div className="space-y-3">
-              <div>
-                <span className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
-                  Correo interno
-                </span>
-                <p className="font-mono text-sm text-text-dark bg-slate-50 rounded-xl px-4 py-2.5 break-all">
-                  {creado.email}
-                </p>
-              </div>
-
-              <div>
-                <span className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
-                  Contraseña generada
-                </span>
-                <div className="flex items-center gap-2">
-                  <p className="font-mono text-sm text-text-dark bg-slate-50 rounded-xl px-4 py-2.5 flex-1 break-all">
-                    {creado.password}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={copiarPassword}
-                    className="shrink-0 bg-primary/10 hover:bg-primary/20 text-primary p-2.5 rounded-xl transition-all"
-                    aria-label="Copiar contraseña"
-                  >
-                    {copiado ? (
-                      <Check className="w-4 h-4" />
-                    ) : (
-                      <Copy className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
+        {creadoNombre && (
+          <div
+            role="status"
+            className="mt-6 bg-white rounded-[24px] shadow-xl border border-emerald-100 p-6 sm:p-8 flex gap-3"
+          >
+            <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+            <div>
+              <h2 className="font-black text-lg text-text-dark mb-1">
+                {creadoNombre} fue creado correctamente
+              </h2>
+              <p className="text-sm text-slate-600 font-semibold">
+                La cuenta queda pendiente de activación. Para crear su contraseña, el usuario
+                debe ingresar su RUT en &quot;Primera vez / Olvidé mi contraseña&quot; del inicio
+                de sesión: recibirá un enlace en el correo registrado.
+              </p>
             </div>
           </div>
         )}
       </div>
 
-      <div className="max-w-3xl mx-auto mt-10">
+      <div className="max-w-5xl mx-auto mt-10">
         <div className="flex items-center gap-3 mb-6">
           <div className="bg-primary/10 p-2.5 rounded-xl text-primary">
             <Users className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="font-black text-xl text-text-dark leading-tight">
-              Usuarios Registrados
-            </h2>
+            <h2 className="font-black text-xl text-text-dark leading-tight">Usuarios Registrados</h2>
             <p className="text-slate-600 text-sm font-semibold">
               Alumnos y profesores en la plataforma
             </p>
@@ -436,49 +576,70 @@ export default function AdminUsuariosPage() {
                     <th className="text-left font-bold text-slate-600 uppercase tracking-wider text-xs px-6 py-4">
                       Rol
                     </th>
+                    <th className="text-left font-bold text-slate-600 uppercase tracking-wider text-xs px-6 py-4">
+                      Estado
+                    </th>
                     <th className="text-right font-bold text-slate-600 uppercase tracking-wider text-xs px-6 py-4">
                       Acciones
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {usuarios.map((usuarioFila) => (
-                    <tr key={usuarioFila.id} className="border-b border-slate-50 last:border-0">
-                      <td className="px-6 py-4 font-semibold text-text-dark">
-                        {usuarioFila.nombres} {usuarioFila.apellidos}
-                      </td>
-                      <td className="px-6 py-4 text-slate-600 font-mono text-xs">
-                        {usuarioFila.rut}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">
-                          {ETIQUETA_ROL[usuarioFila.rol]}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="inline-flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => abrirModalEditar(usuarioFila)}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl font-bold text-xs transition-all"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                            Editar
-                          </button>
-                          {usuarioFila.rol !== "administrador" && (
+                  {usuarios.map((usuarioFila) => {
+                    const estado = ETIQUETA_ESTADO[usuarioFila.estadoActivacion];
+                    return (
+                      <tr key={usuarioFila.id} className="border-b border-slate-50 last:border-0">
+                        <td className="px-6 py-4 font-semibold text-text-dark">
+                          {usuarioFila.nombres} {usuarioFila.apellidos}
+                        </td>
+                        <td className="px-6 py-4 text-slate-600 font-mono text-xs">
+                          {usuarioFila.datos?.rut ?? "—"}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">
+                            {ETIQUETA_ROL[usuarioFila.rol]}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${estado.estilo}`}>
+                            {estado.texto}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="inline-flex items-center gap-2">
                             <button
                               type="button"
-                              onClick={() => abrirModalEliminar(usuarioFila)}
-                              className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-xs transition-all"
+                              onClick={() => abrirModalEditar(usuarioFila)}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl font-bold text-xs transition-all"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              Eliminar
+                              <Pencil className="w-3.5 h-3.5" />
+                              Editar
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            {usuarioFila.rol !== "administrador" && (
+                              <button
+                                type="button"
+                                onClick={() => abrirModalEnlace(usuarioFila)}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition-all"
+                              >
+                                <KeyRound className="w-3.5 h-3.5" />
+                                Enlace
+                              </button>
+                            )}
+                            {usuarioFila.rol !== "administrador" && (
+                              <button
+                                type="button"
+                                onClick={() => abrirModalEliminar(usuarioFila)}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-xs transition-all"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Eliminar
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -494,9 +655,7 @@ export default function AdminUsuariosPage() {
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <h2 className="font-black text-lg text-text-dark leading-tight">
-                  Eliminar usuario
-                </h2>
+                <h2 className="font-black text-lg text-text-dark leading-tight">Eliminar usuario</h2>
                 <p className="text-sm text-slate-600 font-semibold truncate">
                   {usuarioAEliminar.nombres} {usuarioAEliminar.apellidos}
                 </p>
@@ -504,14 +663,10 @@ export default function AdminUsuariosPage() {
             </div>
 
             <p className="text-sm text-slate-600 mb-4">
-              Esta acción no se puede deshacer. Ingresa tu contraseña de administrador
-              para confirmar.
+              Esta acción no se puede deshacer. Ingresa tu contraseña de administrador para confirmar.
             </p>
 
-            <label
-              htmlFor="passwordAdmin"
-              className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 px-1"
-            >
+            <label htmlFor="passwordAdmin" className={CLASE_LABEL}>
               Tu contraseña
             </label>
             <input
@@ -521,7 +676,7 @@ export default function AdminUsuariosPage() {
               onChange={(evento) => setPasswordAdmin(evento.target.value)}
               autoComplete="current-password"
               autoFocus
-              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-base font-medium text-text-dark placeholder:text-slate-500 mb-4"
+              className={`${CLASE_INPUT} mb-4`}
             />
 
             {errorEliminar && (
@@ -555,29 +710,98 @@ export default function AdminUsuariosPage() {
         </div>
       )}
 
+      {usuarioEnlace && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-6 sm:p-8">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-primary/10 p-2.5 rounded-xl text-primary flex-shrink-0">
+                <KeyRound className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-black text-lg text-text-dark leading-tight">Enlace de acceso</h2>
+                <p className="text-sm text-slate-600 font-semibold truncate">
+                  {usuarioEnlace.nombres} {usuarioEnlace.apellidos}
+                </p>
+              </div>
+            </div>
+
+            {generandoEnlace && (
+              <p className="text-sm text-slate-600 font-semibold py-4 text-center">
+                Generando enlace...
+              </p>
+            )}
+
+            {errorEnlace && (
+              <p
+                role="alert"
+                className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mb-4"
+              >
+                {errorEnlace}
+              </p>
+            )}
+
+            {enlace && (
+              <>
+                <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+                  Con este enlace el usuario puede{" "}
+                  {enlace.esActivacion ? "crear su contraseña" : "restablecer su contraseña"} sin
+                  usar el correo. Entrégalo solo a esa persona o a su apoderado: funciona una
+                  sola vez y vence en poco tiempo.
+                </p>
+
+                <div className="flex items-start gap-2 mb-4">
+                  <p className="font-mono text-xs text-text-dark bg-slate-50 rounded-xl px-4 py-3 flex-1 break-all">
+                    {enlace.url}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={copiarEnlace}
+                    className="shrink-0 bg-primary/10 hover:bg-primary/20 text-primary p-2.5 rounded-xl transition-all"
+                    aria-label="Copiar enlace"
+                  >
+                    {enlaceCopiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+              </>
+            )}
+
+            <button
+              type="button"
+              onClick={cerrarModalEnlace}
+              className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 py-3 rounded-2xl font-bold text-sm transition-all"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
       {usuarioAEditar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-sm w-full p-6 sm:p-8">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center gap-3 mb-4">
               <div className="bg-primary/10 p-2.5 rounded-xl text-primary flex-shrink-0">
                 <Pencil className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <h2 className="font-black text-lg text-text-dark leading-tight">
-                  Editar usuario
-                </h2>
+                <h2 className="font-black text-lg text-text-dark leading-tight">Editar usuario</h2>
                 <p className="text-sm text-slate-600 font-semibold truncate">
-                  {usuarioAEditar.nombres} {usuarioAEditar.apellidos}
+                  {usuarioAEditar.datos?.rut ?? "Sin RUT registrado"} ·{" "}
+                  {ETIQUETA_ROL[usuarioAEditar.rol]}
                 </p>
               </div>
             </div>
 
+            {!usuarioAEditar.datos && (
+              <p className="text-sm font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-4">
+                Esta cuenta no tiene datos privados registrados (fue creada antes del cambio de
+                modelo). No se puede editar: debe eliminarse y crearse de nuevo.
+              </p>
+            )}
+
             <div className="space-y-4 mb-4">
               <div>
-                <label
-                  htmlFor="nombresEditar"
-                  className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 px-1"
-                >
+                <label htmlFor="nombresEditar" className={CLASE_LABEL}>
                   Nombres
                 </label>
                 <input
@@ -587,15 +811,12 @@ export default function AdminUsuariosPage() {
                   onChange={(evento) => setNombresEditar(evento.target.value)}
                   maxLength={100}
                   autoFocus
-                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-base font-medium text-text-dark placeholder:text-slate-500"
+                  className={CLASE_INPUT}
                 />
               </div>
 
               <div>
-                <label
-                  htmlFor="apellidosEditar"
-                  className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 px-1"
-                >
+                <label htmlFor="apellidosEditar" className={CLASE_LABEL}>
                   Apellidos
                 </label>
                 <input
@@ -604,9 +825,33 @@ export default function AdminUsuariosPage() {
                   value={apellidosEditar}
                   onChange={(evento) => setApellidosEditar(evento.target.value)}
                   maxLength={100}
-                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-base font-medium text-text-dark placeholder:text-slate-500"
+                  className={CLASE_INPUT}
                 />
               </div>
+
+              <div>
+                <label htmlFor="fechaEditar" className={CLASE_LABEL}>
+                  Fecha de nacimiento
+                </label>
+                <input
+                  id="fechaEditar"
+                  type="date"
+                  value={fechaEditar}
+                  onChange={(evento) => setFechaEditar(evento.target.value)}
+                  min="1900-01-01"
+                  max={hoyIso()}
+                  className={CLASE_INPUT}
+                />
+              </div>
+
+              <CamposContacto
+                rol={usuarioAEditar.rol}
+                prefijoId="editar"
+                email={emailEditar}
+                emailApoderado={emailApoderadoEditar}
+                onEmail={setEmailEditar}
+                onEmailApoderado={setEmailApoderadoEditar}
+              />
             </div>
 
             {errorEditar && (
@@ -630,7 +875,12 @@ export default function AdminUsuariosPage() {
               <button
                 type="button"
                 onClick={handleConfirmarEditar}
-                disabled={editando || !nombresEditar.trim() || !apellidosEditar.trim()}
+                disabled={
+                  editando ||
+                  !usuarioAEditar.datos ||
+                  !nombresEditar.trim() ||
+                  !apellidosEditar.trim()
+                }
                 className="flex-1 bg-primary hover:bg-primary-dark text-white py-3 rounded-2xl font-bold text-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {editando ? "Guardando..." : "Guardar cambios"}

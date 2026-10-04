@@ -1,6 +1,7 @@
 /**
- * Crea un único usuario con rol 'administrador' (Auth + custom claim + doc
- * en usuarios/{uid}). Necesario porque el primer Admin no puede autocrearse
+ * Crea un único usuario con rol 'administrador' (cuenta de Auth con el
+ * identificador derivado del RUT + custom claim + usuarios/{uid} +
+ * datos_privados/{uid} cifrado). Necesario porque el primer Admin no puede autocrearse
  * desde la pantalla de Admin (esa pantalla solo permite crear
  * 'alumno'/'profesor', ver src/app/(intranet)/admin/usuarios/actions.ts).
  *
@@ -11,11 +12,12 @@
  * Uso contra el proyecto real de Firebase (una sola vez, para crear el
  * Admin real):
  *   npm run seed:admin -- --confirm-produccion
- *     -> requiere ADMIN_RUT, ADMIN_NOMBRES, ADMIN_APELLIDOS, ADMIN_PASSWORD
- *        y ADMIN_FECHA_NACIMIENTO (YYYY-MM-DD) como variables de entorno —
- *        nunca se usan los datos de prueba hardcodeados contra producción.
- *        También requiere FIREBASE_ADMIN_CLIENT_EMAIL/PRIVATE_KEY en
- *        .env.local (credenciales reales del service account).
+ *     -> requiere ADMIN_RUT, ADMIN_NOMBRES, ADMIN_APELLIDOS, ADMIN_PASSWORD,
+ *        ADMIN_EMAIL y ADMIN_FECHA_NACIMIENTO (YYYY-MM-DD) como variables de
+ *        entorno — nunca se usan los datos de prueba hardcodeados contra
+ *        producción. También requiere FIREBASE_ADMIN_CLIENT_EMAIL/PRIVATE_KEY
+ *        en .env.local (credenciales reales del service account) y las claves
+ *        FENIX_CLAVE_HMAC/FENIX_CLAVE_CIFRADO de producción.
  *
  * Mismo patrón que scripts/seed-test-users.ts: no reutiliza
  * src/lib/firebase/admin.ts porque ese módulo importa "server-only", y este
@@ -31,7 +33,10 @@ import {
   getFirestore,
   type WithFieldValue,
 } from "firebase-admin/firestore";
-import { emailSinteticoDesdeRut } from "../src/lib/auth/rut";
+import { rutEsValido } from "../src/lib/auth/rut";
+import { identificadorDesdeRut } from "../src/lib/seguridad/cifrado";
+import { cifrarDatosPrivados } from "../src/lib/seguridad/datos-privados";
+import { esEmailValido, esFechaNacimientoValida, normalizarEmail } from "../src/lib/validacion";
 import type { Usuario } from "../src/types/usuario";
 
 const FLAG_CONFIRMAR_PRODUCCION = "--confirm-produccion";
@@ -89,19 +94,31 @@ if (modoProduccion) {
 const authAdmin = getAuth(app);
 const dbAdmin = getFirestore(app);
 
-const ADMIN_DATOS_PRUEBA = {
+interface DatosAdmin {
+  rut: string;
+  nombres: string;
+  apellidos: string;
+  password: string;
+  email: string;
+  /** YYYY-MM-DD */
+  fechaNacimiento: string;
+}
+
+const ADMIN_DATOS_PRUEBA: DatosAdmin = {
   rut: "33.333.333-3",
   nombres: "Admin",
   apellidos: "De Prueba",
   password: "Admin123!",
-  fechaNacimiento: new Date("1990-01-01"),
+  email: "admin.prueba@example.com",
+  fechaNacimiento: "1990-01-01",
 };
 
-function datosAdminDesdeEnv() {
+function datosAdminDesdeEnv(): DatosAdmin {
   const rut = process.env.ADMIN_RUT;
   const nombres = process.env.ADMIN_NOMBRES;
   const apellidos = process.env.ADMIN_APELLIDOS;
   const password = process.env.ADMIN_PASSWORD;
+  const email = normalizarEmail(process.env.ADMIN_EMAIL ?? "");
   const fechaNacimientoStr = process.env.ADMIN_FECHA_NACIMIENTO;
 
   const faltantes = [
@@ -109,6 +126,7 @@ function datosAdminDesdeEnv() {
     !nombres && "ADMIN_NOMBRES",
     !apellidos && "ADMIN_APELLIDOS",
     !password && "ADMIN_PASSWORD",
+    !email && "ADMIN_EMAIL",
     !fechaNacimientoStr && "ADMIN_FECHA_NACIMIENTO",
   ].filter((v): v is string => Boolean(v));
 
@@ -121,11 +139,18 @@ function datosAdminDesdeEnv() {
     process.exit(1);
   }
 
-  const fechaNacimiento = new Date(fechaNacimientoStr!);
-  if (Number.isNaN(fechaNacimiento.getTime())) {
+  if (!esFechaNacimientoValida(fechaNacimientoStr!)) {
     console.error(
       "ADMIN_FECHA_NACIMIENTO no es una fecha válida — usa formato YYYY-MM-DD."
     );
+    process.exit(1);
+  }
+  if (!rutEsValido(rut!)) {
+    console.error("ADMIN_RUT no es un RUT válido (dígito verificador incorrecto).");
+    process.exit(1);
+  }
+  if (!esEmailValido(email)) {
+    console.error("ADMIN_EMAIL no es un correo válido.");
     process.exit(1);
   }
 
@@ -134,7 +159,8 @@ function datosAdminDesdeEnv() {
     nombres: nombres!,
     apellidos: apellidos!,
     password: password!,
-    fechaNacimiento,
+    email,
+    fechaNacimiento: fechaNacimientoStr!,
   };
 }
 
@@ -150,23 +176,22 @@ function esErrorConCodigo(error: unknown, codigo: string): boolean {
 }
 
 async function main() {
-  const email = emailSinteticoDesdeRut(ADMIN_DATOS.rut);
-  const displayName = `${ADMIN_DATOS.nombres} ${ADMIN_DATOS.apellidos}`;
+  // Sin displayName a propósito: el nombre no debe verse en la consola de Authentication.
+  const identificador = identificadorDesdeRut(ADMIN_DATOS.rut);
 
   let uid: string;
   try {
     const usuarioCreado = await authAdmin.createUser({
-      email,
+      email: identificador,
       password: ADMIN_DATOS.password,
-      displayName,
     });
     uid = usuarioCreado.uid;
   } catch (error) {
     if (esErrorConCodigo(error, "auth/email-already-exists")) {
-      const usuarioExistente = await authAdmin.getUserByEmail(email);
+      const usuarioExistente = await authAdmin.getUserByEmail(identificador);
       await authAdmin.updateUser(usuarioExistente.uid, {
         password: ADMIN_DATOS.password,
-        displayName,
+        displayName: null,
       });
       uid = usuarioExistente.uid;
     } else {
@@ -177,23 +202,34 @@ async function main() {
   await authAdmin.setCustomUserClaims(uid, { rol: "administrador" });
 
   const usuario: WithFieldValue<Usuario> = {
-    rut: ADMIN_DATOS.rut,
     nombres: ADMIN_DATOS.nombres,
     apellidos: ADMIN_DATOS.apellidos,
-    email,
     rol: "administrador",
     activo: true,
-    fechaNacimiento: ADMIN_DATOS.fechaNacimiento,
+    // Se crea con contraseña conocida, así que no pasa por la activación.
+    estadoActivacion: "activada",
     fechaCreacion: FieldValue.serverTimestamp(),
   };
 
-  await dbAdmin.collection("usuarios").doc(uid).set(usuario);
+  const batch = dbAdmin.batch();
+  batch.set(dbAdmin.collection("usuarios").doc(uid), usuario);
+  batch.set(dbAdmin.collection("datos_privados").doc(uid), {
+    ...cifrarDatosPrivados({
+      rut: ADMIN_DATOS.rut,
+      email: ADMIN_DATOS.email,
+      fechaNacimiento: ADMIN_DATOS.fechaNacimiento,
+    }),
+    fechaActualizacion: FieldValue.serverTimestamp(),
+  });
+  await batch.commit();
 
   console.log("Listo. Datos para probar el login manualmente:\n");
   console.log("── Administrador ───────────────────");
   console.log(`  RUT:           ${ADMIN_DATOS.rut}`);
-  console.log(`  Contraseña:    ${ADMIN_DATOS.password}`);
-  console.log(`  Email interno: ${email}`);
+  if (!modoProduccion) {
+    console.log(`  Contraseña:    ${ADMIN_DATOS.password}`);
+  }
+  console.log(`  Identificador: ${identificador}`);
   console.log(`  UID:           ${uid}`);
 
   process.exit(0);
