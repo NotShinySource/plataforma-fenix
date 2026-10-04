@@ -19,8 +19,9 @@ function mapUsuario(id: string, data: DocumentData): ConId<Usuario> {
 
 /**
  * El ID del documento es el UID de Firebase Auth (decisión 4.2.5). Solo trae
- * datos no sensibles: el listado completo con RUT y correos lo arma el
- * servidor para el Administrador (listarUsuariosConDatosAction).
+ * datos no sensibles: RUT y correos los entrega el servidor al Administrador,
+ * enmascarados en los listados (listarUsuariosAction) y completos de a un
+ * usuario (obtenerDatosPrivadosAction).
  */
 export async function obtenerUsuario(uid: string): Promise<ConId<Usuario> | null> {
   const snap = await getDoc(doc(db, COLECCION, uid));

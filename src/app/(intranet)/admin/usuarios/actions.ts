@@ -14,13 +14,9 @@ import {
   descifrarDatosPrivados,
   type DatosPrivadosParaGuardar,
 } from "@/lib/seguridad/datos-privados";
+import { enmascararEmail, enmascararRut } from "@/lib/seguridad/enmascarar";
 import { esEmailValido, esFechaNacimientoValida, normalizarEmail } from "@/lib/validacion";
-import type {
-  DatosPrivados,
-  RolUsuario,
-  Usuario,
-  UsuarioConDatosPrivados,
-} from "@/types";
+import type { DatosPrivados, RolUsuario, Usuario, UsuarioAdmin } from "@/types";
 
 export type RolCreable = "alumno" | "profesor";
 
@@ -192,17 +188,17 @@ export async function crearUsuarioAction(input: CrearUsuarioInput): Promise<Resu
 }
 
 export interface ListarUsuariosResultado extends ResultadoAccion {
-  usuarios?: UsuarioConDatosPrivados[];
+  usuarios?: UsuarioAdmin[];
 }
 
 /**
- * Listado completo para el panel de Administración, con RUT y correos
- * descifrados en el servidor. Reemplaza la lectura directa desde el
- * navegador: así los RUT nunca viajan al cliente salvo para el Administrador.
+ * Listado para el panel de Administración. Descifra en el servidor, pero
+ * envía al navegador solo versiones enmascaradas del RUT y del correo: una
+ * lista con todos los RUT de menores no debe quedar a la vista ni viajar
+ * completa. Los datos completos se piden de a un usuario con
+ * obtenerDatosPrivadosAction.
  */
-export async function listarUsuariosConDatosAction(
-  idTokenAdmin: string
-): Promise<ListarUsuariosResultado> {
+export async function listarUsuariosAction(idTokenAdmin: string): Promise<ListarUsuariosResultado> {
   const verificacion = await verificarAdmin(idTokenAdmin);
   if (!verificacion.ok) {
     return { ok: false, error: verificacion.error };
@@ -216,7 +212,7 @@ export async function listarUsuariosConDatosAction(
 
     const privadosPorUid = new Map(privadosSnap.docs.map((d) => [d.id, d.data()]));
 
-    const usuarios = usuariosSnap.docs.map((usuarioDoc): UsuarioConDatosPrivados => {
+    const usuarios = usuariosSnap.docs.map((usuarioDoc): UsuarioAdmin => {
       const data = usuarioDoc.data();
       const privado = privadosPorUid.get(usuarioDoc.id);
 
@@ -229,6 +225,8 @@ export async function listarUsuariosConDatosAction(
         }
       }
 
+      const correo = datos?.emailApoderado ?? datos?.email;
+
       return {
         id: usuarioDoc.id,
         nombres: data.nombres,
@@ -237,7 +235,9 @@ export async function listarUsuariosConDatosAction(
         activo: data.activo,
         estadoActivacion: data.estadoActivacion ?? "pendiente",
         fechaCreacion: timestampADate(data.fechaCreacion),
-        datos,
+        rutEnmascarado: datos ? enmascararRut(datos.rut) : null,
+        correoEnmascarado: correo ? enmascararEmail(correo) : null,
+        tieneDatosPrivados: datos !== null,
       };
     });
 
@@ -245,6 +245,79 @@ export async function listarUsuariosConDatosAction(
   } catch (error) {
     console.error("Error listando usuarios desde Admin:", error);
     return { ok: false, error: "No se pudo cargar la lista de usuarios." };
+  }
+}
+
+export interface ConsultaUsuarioInput {
+  uid: string;
+  idTokenAdmin: string;
+}
+
+export interface DatosPrivadosResultado extends ResultadoAccion {
+  datos?: DatosPrivados;
+}
+
+/**
+ * RUT, correos y fecha de nacimiento completos de UN usuario, para cuando el
+ * Administrador los necesita de verdad (ver el RUT, editar la ficha).
+ */
+export async function obtenerDatosPrivadosAction(
+  input: ConsultaUsuarioInput
+): Promise<DatosPrivadosResultado> {
+  const verificacion = await verificarAdmin(input.idTokenAdmin);
+  if (!verificacion.ok) {
+    return { ok: false, error: verificacion.error };
+  }
+  if (!input.uid) return { ok: false, error: "Solicitud inválida." };
+
+  try {
+    const privadoDoc = await dbAdmin.collection("datos_privados").doc(input.uid).get();
+    if (!privadoDoc.exists) {
+      return { ok: false, error: "Este usuario no tiene datos privados registrados." };
+    }
+    return { ok: true, datos: descifrarDatosPrivados(privadoDoc.data()!) };
+  } catch (error) {
+    console.error(`Error obteniendo los datos privados de ${input.uid}:`, error);
+    return { ok: false, error: "No se pudieron cargar los datos del usuario." };
+  }
+}
+
+export interface BuscarPorRutInput {
+  rut: string;
+  idTokenAdmin: string;
+}
+
+export interface BuscarPorRutResultado extends ResultadoAccion {
+  /** uid de la cuenta con ese RUT, o `null` si no hay ninguna. */
+  uid?: string | null;
+}
+
+/**
+ * Búsqueda por RUT completo. Como los listados ya no traen los RUT, no se
+ * puede filtrar en el navegador: el servidor deriva el identificador de la
+ * cuenta a partir del RUT y dice a qué usuario corresponde, sin revelar
+ * ningún otro.
+ */
+export async function buscarUsuarioPorRutAction(
+  input: BuscarPorRutInput
+): Promise<BuscarPorRutResultado> {
+  const verificacion = await verificarAdmin(input.idTokenAdmin);
+  if (!verificacion.ok) {
+    return { ok: false, error: verificacion.error };
+  }
+  if (typeof input.rut !== "string" || !rutEsValido(input.rut)) {
+    return { ok: true, uid: null };
+  }
+
+  try {
+    const cuenta = await authAdmin.getUserByEmail(identificadorDesdeRut(input.rut));
+    return { ok: true, uid: cuenta.uid };
+  } catch (error) {
+    if (esErrorConCodigo(error, "auth/user-not-found")) {
+      return { ok: true, uid: null };
+    }
+    console.error("Error buscando un usuario por RUT desde Admin:", error);
+    return { ok: false, error: "No se pudo completar la búsqueda." };
   }
 }
 

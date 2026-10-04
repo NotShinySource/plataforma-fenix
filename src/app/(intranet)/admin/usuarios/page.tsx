@@ -7,6 +7,8 @@ import {
   Check,
   CheckCircle2,
   Copy,
+  Eye,
+  EyeOff,
   KeyRound,
   Mail,
   Pencil,
@@ -23,15 +25,17 @@ import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import { Modal } from "@/components/ui/Modal";
+import { useBusquedaPorRut } from "@/hooks/useBusquedaPorRut";
 import {
   crearUsuarioAction,
   editarUsuarioAction,
   eliminarUsuarioAction,
   generarEnlaceAccesoAction,
-  listarUsuariosConDatosAction,
+  listarUsuariosAction,
+  obtenerDatosPrivadosAction,
   type RolCreable,
 } from "./actions";
-import type { EstadoActivacion, RolUsuario, UsuarioConDatosPrivados } from "@/types";
+import type { EstadoActivacion, RolUsuario, UsuarioAdmin } from "@/types";
 
 const ETIQUETA_ROL: Record<RolUsuario, string> = {
   alumno: "Alumno",
@@ -76,23 +80,51 @@ function hoyIso(): string {
   return `${ahora.getFullYear()}-${mes}-${dia}`;
 }
 
-function iniciales(usuario: UsuarioConDatosPrivados): string {
+function iniciales(usuario: UsuarioAdmin): string {
   return `${usuario.nombres.charAt(0)}${usuario.apellidos.charAt(0)}`.toUpperCase();
 }
 
-/** Correo al que llegan los enlaces: el del apoderado para alumnos, el propio para el resto. */
-function correoPrincipal(usuario: UsuarioConDatosPrivados): string | null {
-  return usuario.datos?.emailApoderado ?? usuario.datos?.email ?? null;
-}
-
-function coincideBusqueda(usuario: UsuarioConDatosPrivados, termino: string): boolean {
+/** Búsqueda por nombre. Por RUT se busca en el servidor (ver useBusquedaPorRut). */
+function coincideNombre(usuario: UsuarioAdmin, termino: string): boolean {
   const t = termino.trim().toLowerCase();
   if (!t) return true;
-  const rut = usuario.datos?.rut ?? "";
+  return `${usuario.nombres} ${usuario.apellidos}`.toLowerCase().includes(t);
+}
+
+interface RutProtegidoProps {
+  usuario: UsuarioAdmin;
+  /** RUT completo, si el Administrador pidió verlo. */
+  revelado: string | undefined;
+  cargando: boolean;
+  onAlternar: () => void;
+}
+
+/**
+ * RUT enmascarado por defecto, con un botón para ver el completo de esa
+ * persona. El completo se pide al servidor solo en ese momento.
+ */
+function RutProtegido({ usuario, revelado, cargando, onAlternar }: RutProtegidoProps) {
+  if (!usuario.rutEnmascarado) {
+    return <span className="text-slate-600 font-mono text-xs">—</span>;
+  }
+
+  const nombre = `${usuario.nombres} ${usuario.apellidos}`;
   return (
-    `${usuario.nombres} ${usuario.apellidos}`.toLowerCase().includes(t) ||
-    rut.toLowerCase().includes(t) ||
-    rut.replace(/[.\-]/g, "").toLowerCase().includes(t.replace(/[.\-]/g, ""))
+    <span className="inline-flex items-center gap-1.5">
+      <span className="text-slate-700 font-mono text-xs whitespace-nowrap">
+        {revelado ?? usuario.rutEnmascarado}
+      </span>
+      <button
+        type="button"
+        onClick={onAlternar}
+        disabled={cargando}
+        aria-label={revelado ? `Ocultar el RUT de ${nombre}` : `Ver el RUT completo de ${nombre}`}
+        aria-pressed={Boolean(revelado)}
+        className="p-1.5 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+      >
+        {revelado ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+      </button>
+    </span>
   );
 }
 
@@ -171,7 +203,7 @@ function CamposContacto({
 }
 
 interface AccionesFilaProps {
-  usuario: UsuarioConDatosPrivados;
+  usuario: UsuarioAdmin;
   onEditar: () => void;
   onEnlace: () => void;
   onEliminar: () => void;
@@ -219,7 +251,7 @@ function AccionesFila({ usuario, onEditar, onEnlace, onEliminar }: AccionesFilaP
 }
 
 export default function AdminUsuariosPage() {
-  const [usuarios, setUsuarios] = useState<UsuarioConDatosPrivados[]>([]);
+  const [usuarios, setUsuarios] = useState<UsuarioAdmin[]>([]);
   const [cargandoUsuarios, setCargandoUsuarios] = useState(true);
   const [errorUsuarios, setErrorUsuarios] = useState<string | null>(null);
   const [recargarContador, setRecargarContador] = useState(0);
@@ -240,12 +272,12 @@ export default function AdminUsuariosPage() {
   const [error, setError] = useState<string | null>(null);
   const [creadoNombre, setCreadoNombre] = useState<string | null>(null);
 
-  const [usuarioAEliminar, setUsuarioAEliminar] = useState<UsuarioConDatosPrivados | null>(null);
+  const [usuarioAEliminar, setUsuarioAEliminar] = useState<UsuarioAdmin | null>(null);
   const [passwordAdmin, setPasswordAdmin] = useState("");
   const [eliminando, setEliminando] = useState(false);
   const [errorEliminar, setErrorEliminar] = useState<string | null>(null);
 
-  const [usuarioAEditar, setUsuarioAEditar] = useState<UsuarioConDatosPrivados | null>(null);
+  const [usuarioAEditar, setUsuarioAEditar] = useState<UsuarioAdmin | null>(null);
   const [nombresEditar, setNombresEditar] = useState("");
   const [apellidosEditar, setApellidosEditar] = useState("");
   const [fechaEditar, setFechaEditar] = useState("");
@@ -253,9 +285,18 @@ export default function AdminUsuariosPage() {
   const [emailApoderadoEditar, setEmailApoderadoEditar] = useState("");
   const [editando, setEditando] = useState(false);
   const [errorEditar, setErrorEditar] = useState<string | null>(null);
+  // La ficha completa se pide al servidor al abrir "Editar": el listado no la trae.
+  const [cargandoFicha, setCargandoFicha] = useState(false);
+  const [rutEditar, setRutEditar] = useState<string | null>(null);
+
+  // RUT completos que el Administrador pidió ver, por uid. Se piden de a uno.
+  const [rutsRevelados, setRutsRevelados] = useState<Record<string, string>>({});
+  const [revelandoId, setRevelandoId] = useState<string | null>(null);
+
+  const busquedaRut = useBusquedaPorRut(busqueda);
 
   // Alternativa al correo: enlace de acceso generado para entregar en persona.
-  const [usuarioEnlace, setUsuarioEnlace] = useState<UsuarioConDatosPrivados | null>(null);
+  const [usuarioEnlace, setUsuarioEnlace] = useState<UsuarioAdmin | null>(null);
   const [enlace, setEnlace] = useState<{ url: string; esActivacion: boolean } | null>(null);
   const [generandoEnlace, setGenerandoEnlace] = useState(false);
   const [errorEnlace, setErrorEnlace] = useState<string | null>(null);
@@ -270,7 +311,7 @@ export default function AdminUsuariosPage() {
       try {
         const idTokenAdmin = await auth.currentUser?.getIdToken();
         if (!idTokenAdmin) throw new Error("Sin sesión");
-        const resultado = await listarUsuariosConDatosAction(idTokenAdmin);
+        const resultado = await listarUsuariosAction(idTokenAdmin);
         if (cancelado) return;
         if (!resultado.ok || !resultado.usuarios) {
           setErrorUsuarios(resultado.error ?? "No se pudo cargar la lista de usuarios.");
@@ -296,12 +337,41 @@ export default function AdminUsuariosPage() {
       usuarios
         .filter((u) => filtroRol === "todos" || u.rol === filtroRol)
         .filter((u) => filtroEstado === "todos" || u.estadoActivacion === filtroEstado)
-        .filter((u) => coincideBusqueda(u, busqueda))
+        // Un RUT completo se resuelve en el servidor; cualquier otro texto busca por nombre.
+        .filter((u) =>
+          busquedaRut.esRut ? u.id === busquedaRut.uid : coincideNombre(u, busqueda)
+        )
         .sort((a, b) =>
           `${a.apellidos} ${a.nombres}`.localeCompare(`${b.apellidos} ${b.nombres}`, "es")
         ),
-    [usuarios, filtroRol, filtroEstado, busqueda]
+    [usuarios, filtroRol, filtroEstado, busqueda, busquedaRut.esRut, busquedaRut.uid]
   );
+
+  async function alternarRut(usuarioObjetivo: UsuarioAdmin) {
+    if (rutsRevelados[usuarioObjetivo.id]) {
+      setRutsRevelados((previos) => {
+        const siguientes = { ...previos };
+        delete siguientes[usuarioObjetivo.id];
+        return siguientes;
+      });
+      return;
+    }
+    if (!auth.currentUser) return;
+
+    setRevelandoId(usuarioObjetivo.id);
+    try {
+      const idTokenAdmin = await auth.currentUser.getIdToken();
+      const resultado = await obtenerDatosPrivadosAction({ uid: usuarioObjetivo.id, idTokenAdmin });
+      if (resultado.ok && resultado.datos) {
+        const rutCompleto = resultado.datos.rut;
+        setRutsRevelados((previos) => ({ ...previos, [usuarioObjetivo.id]: rutCompleto }));
+      }
+    } catch {
+      // Si falla, el RUT simplemente sigue enmascarado.
+    } finally {
+      setRevelandoId(null);
+    }
+  }
 
   const totalPendientes = usuarios.filter((u) => u.estadoActivacion === "pendiente").length;
   const hayFiltros = busqueda.trim() !== "" || filtroRol !== "todos" || filtroEstado !== "todos";
@@ -363,7 +433,7 @@ export default function AdminUsuariosPage() {
     }
   }
 
-  function abrirModalEliminar(usuarioObjetivo: UsuarioConDatosPrivados) {
+  function abrirModalEliminar(usuarioObjetivo: UsuarioAdmin) {
     setUsuarioAEliminar(usuarioObjetivo);
     setPasswordAdmin("");
     setErrorEliminar(null);
@@ -414,19 +484,45 @@ export default function AdminUsuariosPage() {
     }
   }
 
-  function abrirModalEditar(usuarioObjetivo: UsuarioConDatosPrivados) {
+  async function abrirModalEditar(usuarioObjetivo: UsuarioAdmin) {
     setUsuarioAEditar(usuarioObjetivo);
     setNombresEditar(usuarioObjetivo.nombres);
     setApellidosEditar(usuarioObjetivo.apellidos);
-    setFechaEditar(usuarioObjetivo.datos?.fechaNacimiento ?? "");
-    setEmailEditar(usuarioObjetivo.datos?.email ?? "");
-    setEmailApoderadoEditar(usuarioObjetivo.datos?.emailApoderado ?? "");
+    setFechaEditar("");
+    setEmailEditar("");
+    setEmailApoderadoEditar("");
+    setRutEditar(null);
     setErrorEditar(null);
+
+    if (!usuarioObjetivo.tieneDatosPrivados || !auth.currentUser) return;
+
+    // Correos y fecha de nacimiento completos: solo de esta persona y solo ahora.
+    setCargandoFicha(true);
+    try {
+      const idTokenAdmin = await auth.currentUser.getIdToken();
+      const resultado = await obtenerDatosPrivadosAction({ uid: usuarioObjetivo.id, idTokenAdmin });
+      if (!resultado.ok || !resultado.datos) {
+        setErrorEditar(resultado.error ?? "No se pudieron cargar los datos del usuario.");
+        return;
+      }
+      setRutEditar(resultado.datos.rut);
+      setFechaEditar(resultado.datos.fechaNacimiento);
+      setEmailEditar(resultado.datos.email ?? "");
+      setEmailApoderadoEditar(resultado.datos.emailApoderado ?? "");
+    } catch {
+      setErrorEditar("No se pudieron cargar los datos del usuario.");
+    } finally {
+      setCargandoFicha(false);
+    }
   }
 
   function cerrarModalEditar() {
     if (editando) return;
     setUsuarioAEditar(null);
+    setRutEditar(null);
+    setFechaEditar("");
+    setEmailEditar("");
+    setEmailApoderadoEditar("");
     setErrorEditar(null);
   }
 
@@ -464,7 +560,7 @@ export default function AdminUsuariosPage() {
     }
   }
 
-  async function abrirModalEnlace(usuarioObjetivo: UsuarioConDatosPrivados) {
+  async function abrirModalEnlace(usuarioObjetivo: UsuarioAdmin) {
     if (!auth.currentUser) return;
 
     setUsuarioEnlace(usuarioObjetivo);
@@ -563,7 +659,7 @@ export default function AdminUsuariosPage() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4 pointer-events-none" />
             <input
               type="search"
-              placeholder="Buscar por nombre o RUT..."
+              placeholder="Buscar por nombre o RUT completo..."
               value={busqueda}
               onChange={(evento) => setBusqueda(evento.target.value)}
               aria-label="Buscar usuarios"
@@ -613,8 +709,10 @@ export default function AdminUsuariosPage() {
               icono={Users}
               titulo={hayFiltros ? "Ningún usuario coincide" : "Todavía no hay usuarios registrados"}
               descripcion={
-                hayFiltros
-                  ? "Prueba con otra búsqueda o cambia los filtros."
+                busquedaRut.buscando
+                  ? "Buscando ese RUT..."
+                  : hayFiltros
+                  ? "Prueba con otro nombre, con el RUT completo o cambia los filtros."
                   : "Crea el primero con el botón \"Nuevo usuario\"."
               }
             />
@@ -648,7 +746,6 @@ export default function AdminUsuariosPage() {
                 <tbody className="divide-y divide-slate-100">
                   {usuariosFiltrados.map((usuarioFila) => {
                     const estado = ETIQUETA_ESTADO[usuarioFila.estadoActivacion];
-                    const correo = correoPrincipal(usuarioFila);
                     return (
                       <tr key={usuarioFila.id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-6 py-4">
@@ -662,13 +759,18 @@ export default function AdminUsuariosPage() {
                               </p>
                               <p className="text-xs text-slate-600 font-medium truncate flex items-center gap-1">
                                 <Mail className="w-3 h-3 flex-shrink-0" />
-                                {correo ?? "Sin correo registrado"}
+                                {usuarioFila.correoEnmascarado ?? "Sin correo registrado"}
                               </p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-700 font-mono text-xs whitespace-nowrap">
-                          {usuarioFila.datos?.rut ?? "—"}
+                        <td className="px-6 py-4">
+                          <RutProtegido
+                            usuario={usuarioFila}
+                            revelado={rutsRevelados[usuarioFila.id]}
+                            cargando={revelandoId === usuarioFila.id}
+                            onAlternar={() => alternarRut(usuarioFila)}
+                          />
                         </td>
                         <td className="px-6 py-4">
                           <span
@@ -711,9 +813,12 @@ export default function AdminUsuariosPage() {
                         <p className="font-bold text-text-dark truncate">
                           {usuarioFila.nombres} {usuarioFila.apellidos}
                         </p>
-                        <p className="text-xs text-slate-700 font-mono">
-                          {usuarioFila.datos?.rut ?? "—"}
-                        </p>
+                        <RutProtegido
+                          usuario={usuarioFila}
+                          revelado={rutsRevelados[usuarioFila.id]}
+                          cargando={revelandoId === usuarioFila.id}
+                          onAlternar={() => alternarRut(usuarioFila)}
+                        />
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -881,14 +986,20 @@ export default function AdminUsuariosPage() {
       {usuarioAEditar && (
         <Modal
           titulo="Editar usuario"
-          subtitulo={`${usuarioAEditar.datos?.rut ?? "Sin RUT registrado"} · ${ETIQUETA_ROL[usuarioAEditar.rol]}`}
+          subtitulo={`${rutEditar ?? usuarioAEditar.rutEnmascarado ?? "Sin RUT registrado"} · ${ETIQUETA_ROL[usuarioAEditar.rol]}`}
           icono={Pencil}
           ancho="lg"
           bloqueado={editando}
           onCerrar={cerrarModalEditar}
         >
           <form onSubmit={handleConfirmarEditar} className="space-y-4" noValidate>
-            {!usuarioAEditar.datos && (
+            {cargandoFicha && (
+              <p className="text-sm font-semibold text-slate-600 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
+                Cargando los datos del usuario...
+              </p>
+            )}
+
+            {!usuarioAEditar.tieneDatosPrivados && (
               <p className="text-sm font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
                 Esta cuenta no tiene datos privados registrados (fue creada antes del cambio de
                 modelo). No se puede editar: debe eliminarse y crearse de nuevo.
@@ -968,7 +1079,9 @@ export default function AdminUsuariosPage() {
                 type="submit"
                 disabled={
                   editando ||
-                  !usuarioAEditar.datos ||
+                  cargandoFicha ||
+                  // Sin la ficha cargada no se guarda: se perderían los correos y la fecha.
+                  rutEditar === null ||
                   !nombresEditar.trim() ||
                   !apellidosEditar.trim()
                 }

@@ -18,14 +18,15 @@ import { listarMiembrosDeElenco, obtenerElenco } from "@/services/elencos.servic
 import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
 import { Modal } from "@/components/ui/Modal";
+import { useBusquedaPorRut } from "@/hooks/useBusquedaPorRut";
 import { agregarMiembroAction, eliminarElencoAction, quitarMiembroAction } from "../actions";
-import { listarUsuariosConDatosAction } from "../../usuarios/actions";
+import { listarUsuariosAction } from "../../usuarios/actions";
 import type {
   CargoDocente,
   ConId,
   Elenco,
   MiembroElenco,
-  UsuarioConDatosPrivados,
+  UsuarioAdmin,
 } from "@/types";
 
 const ETIQUETA_CARGO: Record<CargoDocente, string> = {
@@ -33,17 +34,11 @@ const ETIQUETA_CARGO: Record<CargoDocente, string> = {
   asistente: "Asistente",
 };
 
-/** Búsqueda por nombre o RUT. El RUT llega descifrado desde el servidor, solo para el Administrador. */
-function coincideBusqueda(usuario: UsuarioConDatosPrivados, termino: string): boolean {
+/** Búsqueda por nombre. Por RUT completo se busca en el servidor (ver useBusquedaPorRut). */
+function coincideNombre(usuario: UsuarioAdmin, termino: string): boolean {
   const t = termino.trim().toLowerCase();
   if (!t) return true;
-  const rutSinFormato = (usuario.datos?.rut ?? "").replace(/[.\-]/g, "").toLowerCase();
-  return (
-    usuario.nombres.toLowerCase().includes(t) ||
-    usuario.apellidos.toLowerCase().includes(t) ||
-    (usuario.datos?.rut ?? "").toLowerCase().includes(t) ||
-    rutSinFormato.includes(t.replace(/[.\-]/g, ""))
-  );
+  return `${usuario.nombres} ${usuario.apellidos}`.toLowerCase().includes(t);
 }
 
 export default function AdminElencoDetallePage() {
@@ -53,7 +48,7 @@ export default function AdminElencoDetallePage() {
   const [elenco, setElenco] = useState<ConId<Elenco> | null>(null);
   const [membresiasProfesor, setMembresiasProfesor] = useState<ConId<MiembroElenco>[]>([]);
   const [membresiasAlumno, setMembresiasAlumno] = useState<ConId<MiembroElenco>[]>([]);
-  const [usuarios, setUsuarios] = useState<UsuarioConDatosPrivados[]>([]);
+  const [usuarios, setUsuarios] = useState<UsuarioAdmin[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [recargarContador, setRecargarContador] = useState(0);
@@ -90,7 +85,7 @@ export default function AdminElencoDetallePage() {
             obtenerElenco(elencoId),
             listarMiembrosDeElenco(elencoId, "profesor"),
             listarMiembrosDeElenco(elencoId, "alumno"),
-            listarUsuariosConDatosAction(idTokenAdmin),
+            listarUsuariosAction(idTokenAdmin),
           ]);
         if (cancelado) return;
 
@@ -130,20 +125,30 @@ export default function AdminElencoDetallePage() {
 
   const cantidadMiembrosActivos = membresiasProfesor.length + membresiasAlumno.length;
 
+  // Los listados traen el RUT enmascarado: un RUT completo se resuelve en el servidor.
+  const rutProfesor = useBusquedaPorRut(busquedaProfesor);
+  const rutAlumno = useBusquedaPorRut(busquedaAlumno);
+
   const candidatosProfesor = useMemo(
     () =>
       usuarios.filter(
-        (u) => u.rol === "profesor" && !idsMiembros.has(u.id) && coincideBusqueda(u, busquedaProfesor)
+        (u) =>
+          u.rol === "profesor" &&
+          !idsMiembros.has(u.id) &&
+          (rutProfesor.esRut ? u.id === rutProfesor.uid : coincideNombre(u, busquedaProfesor))
       ),
-    [usuarios, idsMiembros, busquedaProfesor]
+    [usuarios, idsMiembros, busquedaProfesor, rutProfesor.esRut, rutProfesor.uid]
   );
 
   const candidatosAlumno = useMemo(
     () =>
       usuarios.filter(
-        (u) => u.rol === "alumno" && !idsMiembros.has(u.id) && coincideBusqueda(u, busquedaAlumno)
+        (u) =>
+          u.rol === "alumno" &&
+          !idsMiembros.has(u.id) &&
+          (rutAlumno.esRut ? u.id === rutAlumno.uid : coincideNombre(u, busquedaAlumno))
       ),
-    [usuarios, idsMiembros, busquedaAlumno]
+    [usuarios, idsMiembros, busquedaAlumno, rutAlumno.esRut, rutAlumno.uid]
   );
 
   async function handleAgregarProfesor(evento: FormEvent<HTMLFormElement>) {
@@ -370,7 +375,7 @@ export default function AdminElencoDetallePage() {
                   <div key={membresia.id} className="p-4 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-bold text-text-dark truncate">{nombreCompleto}</p>
-                      <p className="text-xs text-slate-600 font-mono">{usuarioMiembro.datos?.rut ?? "—"}</p>
+                      <p className="text-xs text-slate-600 font-mono">{usuarioMiembro.rutEnmascarado ?? "—"}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className="bg-terracotta/10 text-terracotta px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
@@ -400,7 +405,7 @@ export default function AdminElencoDetallePage() {
               </p>
               <input
                 type="text"
-                placeholder="Buscar por nombre o RUT..."
+                placeholder="Buscar por nombre o RUT completo..."
                 value={busquedaProfesor}
                 onChange={(evento) => setBusquedaProfesor(evento.target.value)}
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark placeholder:text-slate-500"
@@ -417,7 +422,7 @@ export default function AdminElencoDetallePage() {
                 </option>
                 {candidatosProfesor.map((candidato) => (
                   <option key={candidato.id} value={candidato.id}>
-                    {candidato.nombres} {candidato.apellidos} — {candidato.datos?.rut ?? "sin RUT"}
+                    {candidato.nombres} {candidato.apellidos} — {candidato.rutEnmascarado ?? "sin RUT"}
                   </option>
                 ))}
               </select>
@@ -474,7 +479,7 @@ export default function AdminElencoDetallePage() {
                   <div key={membresia.id} className="p-4 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-bold text-text-dark truncate">{nombreCompleto}</p>
-                      <p className="text-xs text-slate-600 font-mono">{usuarioMiembro.datos?.rut ?? "—"}</p>
+                      <p className="text-xs text-slate-600 font-mono">{usuarioMiembro.rutEnmascarado ?? "—"}</p>
                     </div>
                     <button
                       type="button"
@@ -499,7 +504,7 @@ export default function AdminElencoDetallePage() {
               </p>
               <input
                 type="text"
-                placeholder="Buscar por nombre o RUT..."
+                placeholder="Buscar por nombre o RUT completo..."
                 value={busquedaAlumno}
                 onChange={(evento) => setBusquedaAlumno(evento.target.value)}
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark placeholder:text-slate-500"
@@ -516,7 +521,7 @@ export default function AdminElencoDetallePage() {
                 </option>
                 {candidatosAlumno.map((candidato) => (
                   <option key={candidato.id} value={candidato.id}>
-                    {candidato.nombres} {candidato.apellidos} — {candidato.datos?.rut ?? "sin RUT"}
+                    {candidato.nombres} {candidato.apellidos} — {candidato.rutEnmascarado ?? "sin RUT"}
                   </option>
                 ))}
               </select>

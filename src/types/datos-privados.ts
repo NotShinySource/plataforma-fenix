@@ -21,11 +21,19 @@ export interface DatosPrivados {
 }
 
 /**
- * Vista del panel de Administración: el usuario más sus datos privados ya
- * descifrados (`null` si el documento privado falta). Solo la arma el
- * servidor, para el Administrador.
+ * Fila de los listados del panel de Administración. El servidor NO envía el
+ * RUT ni los correos completos: solo versiones enmascaradas, suficientes
+ * para reconocer a la persona. Los datos completos se piden de un usuario a
+ * la vez (obtenerDatosPrivadosAction).
  */
-export type UsuarioConDatosPrivados = Usuario & { id: string; datos: DatosPrivados | null };
+export type UsuarioAdmin = Usuario & {
+  id: string;
+  /** Por ejemplo "••.•••.678-5". `null` si la cuenta no tiene datos privados. */
+  rutEnmascarado: string | null;
+  /** Correo al que llegan los enlaces (apoderado en alumnos), por ejemplo "ap•••••@gmail.com". */
+  correoEnmascarado: string | null;
+  tieneDatosPrivados: boolean;
+};
 
 /** Forma en que se guarda en Firestore: cada dato cifrado con AES-256-GCM. */
 export interface DatosPrivadosCifrados {
