@@ -4,6 +4,7 @@ import { IntranetFooter } from "@/components/intranet/shared/IntranetFooter";
 
 const NAV_ALUMNO = [
   { href: "/alumno", label: "Mis Elencos" },
+  { href: "/alumno/tareas", label: "Tareas" },
   { href: "/alumno/avisos", label: "Avisos" },
   { href: "/alumno/asistencia", label: "Asistencia" },
 ];

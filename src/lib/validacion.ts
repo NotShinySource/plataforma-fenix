@@ -36,3 +36,34 @@ export function esFechaNacimientoValida(fecha: string): boolean {
 
   return existe && anio >= 1900 && comoFecha.getTime() <= Date.now();
 }
+
+export const LONGITUD_MAXIMA_TITULO_TAREA = 120;
+
+const MEGABYTE = 1024 * 1024;
+
+/** Formatos y tamaños máximos admitidos para el material adjunto de una tarea. */
+const LIMITES_ADJUNTO = {
+  PDF: { extensiones: [".pdf"], maximoBytes: 25 * MEGABYTE, etiqueta: "PDF de hasta 25 MB" },
+  Audio: {
+    extensiones: [".mp3", ".wav"],
+    maximoBytes: 50 * MEGABYTE,
+    etiqueta: "audio .mp3 o .wav de hasta 50 MB",
+  },
+} as const;
+
+export const ACCEPT_ADJUNTO = {
+  PDF: ".pdf,application/pdf",
+  Audio: ".mp3,.wav,audio/mpeg,audio/wav",
+} as const;
+
+/** Devuelve el mensaje de error, o null si el archivo es aceptable. */
+export function validarAdjunto(archivo: File, tipo: "PDF" | "Audio"): string | null {
+  const limite = LIMITES_ADJUNTO[tipo];
+  const nombre = archivo.name.toLowerCase();
+  const formatoValido = limite.extensiones.some((extension) => nombre.endsWith(extension));
+
+  if (!formatoValido || archivo.size > limite.maximoBytes) {
+    return `El archivo debe ser un ${limite.etiqueta}.`;
+  }
+  return null;
+}

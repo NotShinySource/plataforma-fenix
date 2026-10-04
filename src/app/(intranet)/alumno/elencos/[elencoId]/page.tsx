@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Music, Search } from "lucide-react";
+import { ArrowLeft, ListChecks, Music, Search } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { esMiembroDeElenco, obtenerElenco } from "@/services/elencos.service";
 import { listarArchivosPorElenco } from "@/services/archivos.service";
 import { ArchivoItem } from "@/components/intranet/alumno/ArchivoItem";
+import { TareasElencoModal } from "@/components/intranet/alumno/TareasElencoModal";
 import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
@@ -28,6 +29,8 @@ export default function AlumnoElencoPage() {
   const [error, setError] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>("todos");
+  const [tareasAbiertas, setTareasAbiertas] = useState(false);
+  const cerrarTareas = useCallback(() => setTareasAbiertas(false), []);
 
   useEffect(() => {
     if (!usuario) return;
@@ -104,14 +107,23 @@ export default function AlumnoElencoPage() {
         <ArrowLeft className="w-4 h-4" /> Volver a mis elencos
       </Link>
 
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-sm space-y-2">
-        <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider inline-block">
-          {elenco.tipoElenco}
-        </span>
-        <h2 className="text-2xl sm:text-3xl font-black text-text-dark">{elenco.nombre}</h2>
-        <p className="text-slate-600 text-sm leading-relaxed max-w-2xl font-medium">
-          {elenco.descripcion}
-        </p>
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-2">
+          <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider inline-block">
+            {elenco.tipoElenco}
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-black text-text-dark">{elenco.nombre}</h2>
+          <p className="text-slate-600 text-sm leading-relaxed max-w-2xl font-medium">
+            {elenco.descripcion}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setTareasAbiertas(true)}
+          className="flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-md flex-shrink-0"
+        >
+          <ListChecks className="w-4 h-4" /> Ver tareas del elenco
+        </button>
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
@@ -166,6 +178,15 @@ export default function AlumnoElencoPage() {
           )}
         </div>
       </div>
+
+      {tareasAbiertas && usuario && (
+        <TareasElencoModal
+          elencoId={elencoId}
+          nombreElenco={elenco.nombre}
+          alumnoId={usuario.uid}
+          onCerrar={cerrarTareas}
+        />
+      )}
     </>
   );
 }

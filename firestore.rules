@@ -63,6 +63,35 @@ service cloud.firestore {
       }
     }
 
+    // Tareas: el docente que la asigna es su dueño (crea, edita, elimina).
+    // Un alumno solo puede tocar su propio estado de "cumplida": agregar o
+    // quitar su uid de completadoPor y su propia fecha en completadoEn, sin
+    // modificar ningún otro campo ni el estado de otro alumno.
+    match /tareas/{tareaId} {
+      function soloCambiaSuPropioEstado() {
+        let antes = resource.data.completadoPor.toSet();
+        let despues = request.resource.data.completadoPor.toSet();
+        return request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['completadoPor', 'completadoEn'])
+          && despues.difference(antes).union(antes.difference(despues))
+            .hasOnly([request.auth.uid])
+          && request.resource.data.completadoEn.diff(resource.data.completadoEn)
+            .affectedKeys().hasOnly([request.auth.uid]);
+      }
+
+      allow read: if autenticado();
+      allow create: if autenticado()
+        && request.auth.token.rol == 'profesor'
+        && request.resource.data.profesorId == request.auth.uid
+        && request.resource.data.completadoPor.size() == 0;
+      allow update: if autenticado() && (
+        (resource.data.profesorId == request.auth.uid
+          && request.resource.data.profesorId == request.auth.uid)
+        || soloCambiaSuPropioEstado()
+      );
+      allow delete: if autenticado() && resource.data.profesorId == request.auth.uid;
+    }
+
     // Datos personales cifrados (RUT, correos, fecha de nacimiento) y el
     // contador de solicitudes de acceso: solo los usa el servidor con el
     // Admin SDK, que no pasa por estas reglas. Desde el navegador no se puede

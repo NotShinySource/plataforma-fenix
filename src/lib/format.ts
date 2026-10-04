@@ -16,6 +16,30 @@ export function formatearFechaSesion(fechaSesion: string): string {
   });
 }
 
+/** "15 de septiembre": día y mes, sin año, para fechas límite cercanas. */
+export function formatearDiaMes(fecha: Date): string {
+  return fecha.toLocaleDateString("es-CL", { day: "numeric", month: "long" });
+}
+
+/** "8 oct", o "Hoy" si la fecha cae en el día actual. */
+export function formatearFechaCorta(fecha: Date): string {
+  if (fecha.toDateString() === new Date().toDateString()) return "Hoy";
+  return fecha.toLocaleDateString("es-CL", { day: "numeric", month: "short" }).replace(".", "");
+}
+
+/** Convierte una fecha al valor `YYYY-MM-DD` que usa <input type="date">, en hora local. */
+export function fechaAValorInput(fecha: Date): string {
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  return `${fecha.getFullYear()}-${mes}-${dia}`;
+}
+
+/** `YYYY-MM-DD` de un <input type="date"> al final de ese día, en hora local. */
+export function valorInputAFinDeDia(valor: string): Date {
+  const [anio, mes, dia] = valor.split("-").map(Number);
+  return new Date(anio, mes - 1, dia, 23, 59, 59);
+}
+
 export function formatearTamanioArchivo(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const kb = bytes / 1024;
