@@ -11,7 +11,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed-test-users.ts",
-    "seed:admin": "tsx scripts/seed-admin-user.ts"
+    "seed:admin": "tsx scripts/seed-admin-user.ts",
+    "seed:tareas": "tsx scripts/seed-tareas.ts"
   },
   "dependencies": {
     "firebase": "^12.15.0",
@@ -22,7 +23,8 @@
     "nodemailer": "^10.0.14",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "tsc": "^2.0.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
