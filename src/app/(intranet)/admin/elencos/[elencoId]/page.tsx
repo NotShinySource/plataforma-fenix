@@ -17,6 +17,7 @@ import { auth } from "@/lib/firebase/client";
 import { listarMiembrosDeElenco, obtenerElenco } from "@/services/elencos.service";
 import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
+import { Modal } from "@/components/ui/Modal";
 import { agregarMiembroAction, eliminarElencoAction, quitarMiembroAction } from "../actions";
 import { listarUsuariosConDatosAction } from "../../usuarios/actions";
 import type {
@@ -282,26 +283,16 @@ export default function AdminElencoDetallePage() {
   }
 
   if (cargando) {
-    return (
-      <main className="min-h-screen bg-surface p-4 sm:p-8">
-        <EstadoCargando texto="Cargando elenco..." />
-      </main>
-    );
+    return <EstadoCargando texto="Cargando elenco..." />;
   }
 
   if (error || !elenco) {
-    return (
-      <main className="min-h-screen bg-surface p-4 sm:p-8">
-        <div className="max-w-3xl mx-auto">
-          <EstadoError mensaje={error ?? "El elenco no existe."} />
-        </div>
-      </main>
-    );
+    return <EstadoError mensaje={error ?? "El elenco no existe."} />;
   }
 
   return (
-    <main className="min-h-screen bg-surface p-4 sm:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <>
+      <div className="space-y-6">
         <Link
           href="/admin/elencos"
           className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-600 hover:text-primary transition-colors"
@@ -553,20 +544,15 @@ export default function AdminElencoDetallePage() {
       </div>
 
       {mostrarModalEliminar && elenco && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-sm w-full p-6 sm:p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-red-50 p-2.5 rounded-xl text-red-600 flex-shrink-0">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="font-black text-lg text-text-dark leading-tight">
-                  Eliminar elenco
-                </h2>
-                <p className="text-sm text-slate-600 font-semibold truncate">{elenco.nombre}</p>
-              </div>
-            </div>
-
+        <Modal
+          titulo="Eliminar elenco"
+          subtitulo={elenco.nombre}
+          icono={AlertTriangle}
+          tono="peligro"
+          ancho="sm"
+          bloqueado={eliminandoElenco}
+          onCerrar={cerrarModalEliminar}
+        >
             <p className="text-sm text-slate-600 mb-4">
               Esta acción no se puede deshacer. Escribe{" "}
               <span className="font-bold text-text-dark">{elenco.nombre}</span> para confirmar.
@@ -614,9 +600,8 @@ export default function AdminElencoDetallePage() {
                 {eliminandoElenco ? "Eliminando..." : "Eliminar"}
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
-    </main>
+    </>
   );
 }

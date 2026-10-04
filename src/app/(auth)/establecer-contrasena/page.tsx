@@ -11,6 +11,7 @@ import {
 import { Lock, ShieldCheck } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
 import { LONGITUD_MINIMA_PASSWORD } from "@/lib/validacion";
+import { MarcoAuth } from "@/components/auth/MarcoAuth";
 import type { RolUsuario } from "@/types";
 import { confirmarActivacionAction } from "./actions";
 
@@ -208,29 +209,19 @@ function FormularioEstablecerContrasena() {
 
 export default function EstablecerContrasenaPage() {
   return (
-    <main className="min-h-screen bg-surface flex items-center justify-center p-4">
-      <div className="bg-white rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl border border-slate-100">
-        <div className="p-8 sm:p-10">
-          <div className="flex flex-col items-center text-center mb-8">
-            <div className="bg-primary/10 p-3.5 rounded-2xl text-primary mb-4">
-              <ShieldCheck className="w-8 h-8" />
-            </div>
-            <h1 className="font-black text-2xl text-text-dark leading-tight">Crea tu contraseña</h1>
-            <p className="text-slate-600 text-sm mt-1.5 font-semibold uppercase tracking-wider">
-              Plataforma Fénix
-            </p>
-          </div>
-
-          {/* useSearchParams exige un límite de Suspense para el build estático. */}
-          <Suspense
-            fallback={
-              <p className="text-center text-slate-600 text-sm font-semibold py-6">Cargando...</p>
-            }
-          >
-            <FormularioEstablecerContrasena />
-          </Suspense>
-        </div>
-      </div>
-    </main>
+    <MarcoAuth
+      icono={ShieldCheck}
+      titulo="Crea tu contraseña"
+      subtitulo="Elige una contraseña que puedas recordar. La usarás junto a tu RUT para entrar."
+    >
+      {/* useSearchParams exige un límite de Suspense para el build estático. */}
+      <Suspense
+        fallback={
+          <p className="text-center text-slate-600 text-sm font-semibold py-6">Cargando...</p>
+        }
+      >
+        <FormularioEstablecerContrasena />
+      </Suspense>
+    </MarcoAuth>
   );
 }
