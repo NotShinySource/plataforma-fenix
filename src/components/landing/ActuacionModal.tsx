@@ -120,7 +120,7 @@ function ContenidoModal({ actuacion, onCerrar }: { actuacion: Actuacion; onCerra
         exit={{ opacity: 0, y: 24, scale: 0.97 }}
         transition={{ duration: 0.25 }}
         onClick={(evento) => evento.stopPropagation()}
-        className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl"
+        className="relative w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden bg-white rounded-3xl shadow-2xl"
       >
         <button
           ref={botonCerrarRef}
@@ -132,9 +132,12 @@ function ContenidoModal({ actuacion, onCerrar }: { actuacion: Actuacion; onCerra
           <X className="w-5 h-5" />
         </button>
 
+        {/* El scroll va en este contenedor interior y no en el marco redondeado,
+            para que la barra quede dentro de las esquinas. */}
+        <div className="overflow-y-auto scroll-fino">
         {/* Carrusel */}
         <div
-          className="relative aspect-[16/10] bg-slate-900 overflow-hidden rounded-t-3xl"
+          className="relative aspect-[16/10] bg-slate-900 overflow-hidden"
           onTouchStart={handleToqueInicio}
           onTouchEnd={handleToqueFin}
         >
@@ -191,7 +194,7 @@ function ContenidoModal({ actuacion, onCerrar }: { actuacion: Actuacion; onCerra
 
         {/* Miniaturas */}
         {total > 1 && (
-          <div className="flex gap-2 px-6 pt-4 overflow-x-auto">
+          <div className="flex gap-2 px-6 pt-4 pb-1 overflow-x-auto scroll-fino">
             {actuacion.imagenes.map((imagen, i) => (
               <button
                 key={imagen + i}
@@ -252,6 +255,7 @@ function ContenidoModal({ actuacion, onCerrar }: { actuacion: Actuacion; onCerra
               </div>
             </div>
           )}
+        </div>
         </div>
       </motion.div>
     </motion.div>
