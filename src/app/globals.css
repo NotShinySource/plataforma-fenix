@@ -34,3 +34,33 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Barra de desplazamiento delgada y redondeada, para paneles con scroll propio
+   (pop-ups, listas). El margen del riel la separa de las esquinas redondeadas. */
+/* Firefox no admite ::-webkit-scrollbar; en Chrome estas dos propiedades
+   anularían el estilo redondeado de abajo, por eso van condicionadas. */
+@supports not selector(::-webkit-scrollbar) {
+  .scroll-fino {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(30 58 138 / 0.35) transparent;
+  }
+}
+
+.scroll-fino::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scroll-fino::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 16px;
+}
+
+.scroll-fino::-webkit-scrollbar-thumb {
+  background-color: rgb(30 58 138 / 0.3);
+  border-radius: 9999px;
+}
+
+.scroll-fino::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(30 58 138 / 0.55);
+}
