@@ -29,7 +29,7 @@ export function Footer() {
               />
             </div>
             <p className="text-slate-400 text-sm font-medium leading-relaxed max-w-sm">
-              Escuela de Música Infanto Juvenil de la Corporación de Cultura y Turismo de Calama.
+              Escuela de Música de la Corporación de Cultura y Turismo de Calama.
               Transformación artística en la Provincia de El Loa.
             </p>
             <div className="flex gap-4 pt-2">

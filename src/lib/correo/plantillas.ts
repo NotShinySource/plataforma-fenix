@@ -56,7 +56,7 @@ export function plantillaEnlaceAcceso(datos: DatosEnlaceAcceso): Omit<Correo, "p
     "",
     parrafos[2],
     "",
-    "Escuela de Música Infanto Juvenil Calambanda",
+    "Escuela de Música Calambanda",
   ].join("\n");
 
   const html = `<!doctype html>
@@ -75,7 +75,7 @@ export function plantillaEnlaceAcceso(datos: DatosEnlaceAcceso): Omit<Correo, "p
       <p style="margin:0 0 24px;font-size:12px;line-height:1.5;word-break:break-all;color:#475569;">${escaparHtml(datos.enlace)}</p>
       <p style="margin:0;font-size:12px;line-height:1.5;color:#475569;">${escaparHtml(parrafos[2])}</p>
     </div>
-    <p style="max-width:520px;margin:16px auto 0;text-align:center;font-size:11px;color:#94a3b8;">Escuela de Música Infanto Juvenil Calambanda</p>
+    <p style="max-width:520px;margin:16px auto 0;text-align:center;font-size:11px;color:#94a3b8;">Escuela de Música Calambanda</p>
   </body>
 </html>`;
 

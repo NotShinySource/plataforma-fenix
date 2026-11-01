@@ -52,7 +52,7 @@ export function MarcoAuth({ icono: Icono, titulo, subtitulo, children }: MarcoAu
             Tu música, tus partituras y tus ensayos en un solo lugar.
           </h2>
           <p className="text-white/80 font-medium leading-relaxed">
-            Intranet de la Escuela de Música Infanto Juvenil Calambanda para estudiantes,
+            Intranet de la Escuela de Música Calambanda para estudiantes,
             docentes y administración.
           </p>
           <div className="flex items-center gap-4 pt-6 border-t border-white/15">

@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Plataforma Fénix — Escuela de Música Calambanda",
   description:
-    "Landing e intranet de la Escuela de Música Infanto Juvenil Calambanda.",
+    "Landing e intranet de la Escuela de Música Calambanda.",
 };
 
 export default function RootLayout({
