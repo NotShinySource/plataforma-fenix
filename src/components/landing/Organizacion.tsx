@@ -25,7 +25,7 @@ export function Organizacion() {
                 Misión, historia y rescate cultural en Calama
               </h2>
               <p className="text-slate-600 leading-relaxed font-medium">
-                La Escuela de Música Infanto Juvenil{" "}
+                La Escuela de Música{" "}
                 <strong className="text-text-dark">Calambanda</strong> nació bajo la convicción de
                 que el arte es un motor de cambio social invaluable. Operamos activamente en los
                 espacios patrimoniales restaurados de nuestra comuna, llevando alegría, educación
@@ -33,7 +33,7 @@ export function Organizacion() {
               </p>
               <p className="text-slate-600 leading-relaxed font-medium">
                 Nuestra misión central es fomentar el talento artístico local, ofreciendo un
-                entorno seguro, inclusivo y profesional para que los niños y jóvenes desarrollen
+                entorno seguro, inclusivo y profesional para que personas de todas las edades desarrollen
                 habilidades musicales óptimas. Rescatamos el patrimonio del desierto de Atacama
                 mediante repertorios inspirados en nuestras raíces.
               </p>

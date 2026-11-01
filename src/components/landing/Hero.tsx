@@ -28,7 +28,7 @@ export function Hero() {
               Música para el Futuro
             </span>
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-text-dark tracking-tight leading-[1.1]">
-              El impacto del arte en la <span className="text-primary">juventud</span> loína
+              El impacto del arte en la <span className="text-primary">comunidad</span> loína
             </h1>
             <p className="text-lg md:text-xl text-slate-500 font-medium leading-relaxed max-w-2xl mx-auto lg:mx-0">
               Transformamos vidas a través de la educación musical gratuita y de excelencia.
@@ -63,7 +63,7 @@ export function Hero() {
               <div className="relative bg-white p-4 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/50">
                 <Image
                   src="/imagenes/inicio/principal.jpg"
-                  alt="Orquesta Juvenil de Calama"
+                  alt="Elencos de Calambanda en concierto"
                   width={1628}
                   height={1110}
                   preload
