@@ -35,7 +35,7 @@ const LONGITUD_MAXIMA_RESUMEN = 2000;
 const LONGITUD_MAXIMA_OBSERVACION = 500;
 
 function hora(fecha: Date): string {
-  return fecha.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+  return fecha.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 export default function ClaseEnCursoPage() {

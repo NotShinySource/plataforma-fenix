@@ -151,7 +151,7 @@ export default function ProfesorClasesPage() {
                     <span className="block font-extrabold">{nombresElencos[sesion.elencoId] ?? "Elenco"}</span>
                     <span className="block text-sm text-blue-100 font-semibold first-letter:uppercase">
                       {formatearFechaLegible(sesion.fecha)} · iniciada a las{" "}
-                      {sesion.inicioReal?.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
+                      {sesion.inicioReal?.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", hour12: false })}
                     </span>
                   </span>
                   <span className="bg-white/15 px-4 py-2 rounded-xl text-sm font-bold flex-shrink-0">Continuar</span>

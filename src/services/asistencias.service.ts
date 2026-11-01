@@ -29,6 +29,24 @@ export async function listarAsistenciasPorSesion(sesionId: string): Promise<ConI
   return snap.docs.map((d) => mapAsistencia(d.id, d.data()));
 }
 
+/**
+ * Asistencia de varias sesiones a la vez, para el informe. Firestore admite
+ * hasta 30 valores en un filtro "in", así que se consulta por tandas.
+ */
+export async function listarAsistenciasDeSesiones(
+  sesionIds: string[]
+): Promise<ConId<Asistencia>[]> {
+  const tandas: string[][] = [];
+  for (let i = 0; i < sesionIds.length; i += 30) tandas.push(sesionIds.slice(i, i + 30));
+
+  const resultados = await Promise.all(
+    tandas.map((tanda) =>
+      getDocs(query(collection(db, COLECCION), where("sesionId", "in", tanda)))
+    )
+  );
+  return resultados.flatMap((snap) => snap.docs.map((d) => mapAsistencia(d.id, d.data())));
+}
+
 /** Historial completo de un alumno en un elenco, para calcular % de asistencia (RF-10). */
 export async function listarAsistenciasPorAlumno(
   elencoId: string,
