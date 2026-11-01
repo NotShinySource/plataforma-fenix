@@ -40,7 +40,7 @@ interface FilaAsistencia {
 }
 
 function horaDe(fecha?: Date): string {
-  return fecha ? fecha.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) : "—";
+  return fecha ? fecha.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", hour12: false }) : "—";
 }
 
 export function DetalleOcurrencia({
