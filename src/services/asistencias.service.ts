@@ -1,23 +1,13 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  query,
-  serverTimestamp,
-  setDoc,
-  where,
-  type DocumentData,
-  type WithFieldValue,
-} from "firebase/firestore";
+import { collection, getDocs, query, where, type DocumentData } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { timestampADate } from "@/lib/firebase/converters";
-import type { Asistencia, ConId, EstadoAsistencia } from "@/types";
+import type { Asistencia, ConId } from "@/types";
 
+/*
+ * Solo lecturas: la asistencia se registra dentro de una clase en curso, a
+ * través de un Server Action que verifica al docente en el servidor.
+ */
 const COLECCION = "asistencias";
-
-function idAsistencia(elencoId: string, alumnoId: string, fechaSesion: string): string {
-  return `${elencoId}_${alumnoId}_${fechaSesion}`;
-}
 
 function mapAsistencia(id: string, data: DocumentData): ConId<Asistencia> {
   return {
@@ -28,48 +18,14 @@ function mapAsistencia(id: string, data: DocumentData): ConId<Asistencia> {
     fechaSesion: data.fechaSesion,
     estado: data.estado,
     observaciones: data.observaciones,
+    sesionId: data.sesionId,
     fechaRegistro: timestampADate(data.fechaRegistro),
   };
 }
 
-interface DatosAsistencia {
-  elencoId: string;
-  alumnoId: string;
-  profesorId: string;
-  fechaSesion: string;
-  estado: EstadoAsistencia;
-  observaciones?: string;
-}
-
-/** Upsert idempotente sobre el ID determinístico (decisión 4.2.3). RF-09. */
-export async function registrarAsistencia(datos: DatosAsistencia): Promise<void> {
-  const id = idAsistencia(datos.elencoId, datos.alumnoId, datos.fechaSesion);
-
-  const nuevaAsistencia: WithFieldValue<Asistencia> = {
-    elencoId: datos.elencoId,
-    alumnoId: datos.alumnoId,
-    profesorId: datos.profesorId,
-    fechaSesion: datos.fechaSesion,
-    estado: datos.estado,
-    ...(datos.observaciones ? { observaciones: datos.observaciones } : {}),
-    fechaRegistro: serverTimestamp(),
-  };
-
-  await setDoc(doc(db, COLECCION, id), nuevaAsistencia);
-}
-
-/** Asistencia de todo un elenco en una sesión puntual, para la planilla del profesor. */
-export async function listarAsistenciasPorElencoYFecha(
-  elencoId: string,
-  fechaSesion: string
-): Promise<ConId<Asistencia>[]> {
-  const snap = await getDocs(
-    query(
-      collection(db, COLECCION),
-      where("elencoId", "==", elencoId),
-      where("fechaSesion", "==", fechaSesion)
-    )
-  );
+/** Asistencia tomada en una sesión de clase (incluye las observaciones del docente). */
+export async function listarAsistenciasPorSesion(sesionId: string): Promise<ConId<Asistencia>[]> {
+  const snap = await getDocs(query(collection(db, COLECCION), where("sesionId", "==", sesionId)));
   return snap.docs.map((d) => mapAsistencia(d.id, d.data()));
 }
 

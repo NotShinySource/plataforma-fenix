@@ -98,11 +98,6 @@ export function AsistenciaElencoCard({ elenco, asistencias }: AsistenciaElencoCa
                     {formatearFechaSesion(asistencia.fechaSesion)}
                   </span>
                   <div className="flex items-center gap-3">
-                    {asistencia.observaciones && (
-                      <span className="text-xs text-slate-600 italic hidden sm:inline">
-                        {asistencia.observaciones}
-                      </span>
-                    )}
                     <span
                       className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${ESTILO_ESTADO[asistencia.estado]}`}
                     >

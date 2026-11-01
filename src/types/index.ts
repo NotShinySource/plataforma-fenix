@@ -4,6 +4,7 @@ export * from "./archivo";
 export * from "./asistencia";
 export * from "./aviso";
 export * from "./tarea";
+export * from "./clase";
 export * from "./datos-privados";
 export * from "./solicitud-acceso";
 
