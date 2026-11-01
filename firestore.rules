@@ -46,9 +46,12 @@ service cloud.firestore {
       allow write: if autenticado() && esDuenio('profesorId');
     }
 
+    // La asistencia se registra solo dentro de una clase en curso, desde el
+    // servidor (Server Action que verifica que quien la toma es docente del
+    // elenco). Desde el navegador solo se lee.
     match /asistencias/{asistenciaId} {
       allow read: if autenticado();
-      allow write: if autenticado() && esDuenio('profesorId');
+      allow write: if false;
     }
 
     match /avisos/{avisoId} {
@@ -90,6 +93,25 @@ service cloud.firestore {
         || soloCambiaSuPropioEstado()
       );
       allow delete: if autenticado() && resource.data.profesorId == request.auth.uid;
+    }
+
+    // Clases: semestres, horarios (series) y sesiones. Se escriben solo desde
+    // el servidor (Server Actions con el Admin SDK, que verifican el rol y
+    // usan la hora del servidor para el inicio y término reales). Desde el
+    // navegador solo se leen.
+    match /semestres/{semestreId} {
+      allow read: if autenticado();
+      allow write: if false;
+    }
+
+    match /clases/{claseId} {
+      allow read: if autenticado();
+      allow write: if false;
+    }
+
+    match /sesiones_clase/{sesionId} {
+      allow read: if autenticado();
+      allow write: if false;
     }
 
     // Datos personales cifrados (RUT, correos, fecha de nacimiento) y el

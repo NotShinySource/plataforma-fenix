@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ClipboardList, FolderUp } from "lucide-react";
+import { CalendarDays, FolderUp } from "lucide-react";
 import type { ConId, Elenco } from "@/types";
 
 interface ElencoCardProps {
@@ -27,10 +27,10 @@ export function ElencoCard({ elenco }: ElencoCardProps) {
           <FolderUp className="w-4 h-4" /> Material
         </Link>
         <Link
-          href={`/profesor/elencos/${elenco.id}/asistencia`}
+          href="/profesor/clases"
           className="flex-1 flex items-center justify-center gap-2 bg-slate-50 hover:bg-terracotta/10 text-slate-600 hover:text-terracotta px-4 py-2.5 rounded-xl font-bold text-xs transition-all border border-slate-100"
         >
-          <ClipboardList className="w-4 h-4" /> Asistencia
+          <CalendarDays className="w-4 h-4" /> Clases y asistencia
         </Link>
       </div>
     </div>

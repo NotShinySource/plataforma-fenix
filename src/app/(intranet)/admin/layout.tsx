@@ -6,6 +6,7 @@ const NAV_ADMIN = [
   { href: "/admin", label: "Panel" },
   { href: "/admin/usuarios", label: "Usuarios" },
   { href: "/admin/elencos", label: "Elencos" },
+  { href: "/admin/clases", label: "Clases" },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
