@@ -54,7 +54,7 @@ export function filasInforme(
     }));
 }
 
-export function horaCorta(fecha?: Date): string {
+function horaCorta(fecha?: Date): string {
   return fecha ? fecha.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", hour12: false }) : "—";
 }
 

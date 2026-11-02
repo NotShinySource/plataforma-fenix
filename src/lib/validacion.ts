@@ -4,7 +4,7 @@
  * endpoint público y se revalida siempre ahí).
  */
 
-export const LONGITUD_MAXIMA_EMAIL = 254;
+const LONGITUD_MAXIMA_EMAIL = 254;
 export const LONGITUD_MINIMA_PASSWORD = 8;
 
 /** Formato razonable de correo: algo@dominio.tld, sin espacios. No verifica que exista. */
