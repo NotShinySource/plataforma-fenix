@@ -17,6 +17,7 @@ import { obtenerUsuario } from "@/services/usuarios.service";
 import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
 import type { ConId, Elenco, SesionClase } from "@/types";
+import { CLASE_ERROR } from "@/components/ui/estilos";
 
 const CLASE_CAMPO =
   "w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm font-medium text-text-dark";
@@ -170,7 +171,7 @@ export default function InformeClasesPage() {
           </div>
 
           {errorExportar && (
-            <p role="alert" className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+            <p role="alert" className={CLASE_ERROR}>
               {errorExportar}
             </p>
           )}

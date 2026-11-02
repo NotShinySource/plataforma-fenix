@@ -12,10 +12,13 @@ import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import { Modal } from "@/components/ui/Modal";
 import { crearElencoAction } from "./actions";
 import { TIPOS_ELENCO, type ConId, type Elenco, type TipoElenco } from "@/types";
-
-const CLASE_INPUT =
-  "w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark placeholder:text-slate-500";
-const CLASE_LABEL = "block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 px-1";
+import {
+  CLASE_BOTON_PRIMARIO,
+  CLASE_BOTON_SECUNDARIO,
+  CLASE_CAMPO,
+  CLASE_ERROR,
+  CLASE_ETIQUETA,
+} from "@/components/ui/estilos";
 
 export default function AdminElencosPage() {
   const router = useRouter();
@@ -150,7 +153,7 @@ export default function AdminElencosPage() {
         >
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div>
-              <label htmlFor="nombre" className={CLASE_LABEL}>
+              <label htmlFor="nombre" className={CLASE_ETIQUETA}>
                 Nombre
               </label>
               <input
@@ -162,12 +165,12 @@ export default function AdminElencosPage() {
                 required
                 maxLength={100}
                 autoFocus
-                className={CLASE_INPUT}
+                className={CLASE_CAMPO}
               />
             </div>
 
             <div>
-              <label htmlFor="tipoElenco" className={CLASE_LABEL}>
+              <label htmlFor="tipoElenco" className={CLASE_ETIQUETA}>
                 Tipo de elenco
               </label>
               <select
@@ -175,7 +178,7 @@ export default function AdminElencosPage() {
                 value={tipoElenco}
                 onChange={(evento) => setTipoElenco(evento.target.value as TipoElenco)}
                 required
-                className={CLASE_INPUT}
+                className={CLASE_CAMPO}
               >
                 {TIPOS_ELENCO.map((opcion) => (
                   <option key={opcion} value={opcion}>
@@ -186,7 +189,7 @@ export default function AdminElencosPage() {
             </div>
 
             <div>
-              <label htmlFor="descripcion" className={CLASE_LABEL}>
+              <label htmlFor="descripcion" className={CLASE_ETIQUETA}>
                 Descripción{" "}
                 <span className="normal-case font-semibold text-slate-600">(opcional)</span>
               </label>
@@ -197,14 +200,14 @@ export default function AdminElencosPage() {
                 onChange={(evento) => setDescripcion(evento.target.value)}
                 maxLength={500}
                 rows={3}
-                className={`${CLASE_INPUT} resize-none`}
+                className={`${CLASE_CAMPO} resize-none`}
               />
             </div>
 
             {errorCrear && (
               <p
                 role="alert"
-                className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3"
+                className={CLASE_ERROR}
               >
                 {errorCrear}
               </p>
@@ -215,14 +218,14 @@ export default function AdminElencosPage() {
                 type="button"
                 onClick={cerrarModalCrear}
                 disabled={enviando}
-                className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-700 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-60"
+                className={CLASE_BOTON_SECUNDARIO}
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={enviando}
-                className="flex-1 bg-primary hover:bg-primary-dark text-white py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                className={CLASE_BOTON_PRIMARIO}
               >
                 {enviando ? "Creando..." : "Crear elenco"}
               </button>

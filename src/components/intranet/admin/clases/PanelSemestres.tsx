@@ -6,6 +6,7 @@ import { auth } from "@/lib/firebase/client";
 import { formatearFechaNumerica, idSemestre } from "@/lib/clases/calendario";
 import { guardarSemestresAction } from "@/app/(intranet)/admin/clases/actions";
 import type { Semestre } from "@/types";
+import { CLASE_ERROR } from "@/components/ui/estilos";
 
 interface PanelSemestresProps {
   anio: number;
@@ -123,7 +124,7 @@ export function PanelSemestres({ anio, semestres, onGuardado }: PanelSemestresPr
           </div>
 
           {error && (
-            <p role="alert" className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+            <p role="alert" className={CLASE_ERROR}>
               {error}
             </p>
           )}

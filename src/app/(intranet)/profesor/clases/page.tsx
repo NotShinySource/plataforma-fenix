@@ -28,6 +28,7 @@ import { EstadoError } from "@/components/ui/EstadoError";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import { iniciarClaseAction } from "./actions";
 import type { ConId, SesionClase } from "@/types";
+import { CLASE_ERROR } from "@/components/ui/estilos";
 
 const DIAS_PROXIMOS = 7;
 
@@ -130,7 +131,7 @@ export default function ProfesorClasesPage() {
       {!error && ocurrencias === null && <EstadoCargando texto="Cargando tus clases..." />}
 
       {errorInicio && (
-        <p role="alert" className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+        <p role="alert" className={CLASE_ERROR}>
           {errorInicio}
         </p>
       )}

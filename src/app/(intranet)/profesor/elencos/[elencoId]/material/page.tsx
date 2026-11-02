@@ -12,6 +12,7 @@ import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import type { Archivo, ConId, Elenco, TipoArchivo } from "@/types";
+import { CLASE_CAMPO, CLASE_ERROR } from "@/components/ui/estilos";
 
 export default function ProfesorMaterialPage() {
   const { elencoId } = useParams<{ elencoId: string }>();
@@ -158,7 +159,7 @@ export default function ProfesorMaterialPage() {
               value={titulo}
               onChange={(evento) => setTitulo(evento.target.value)}
               placeholder="Ej: Score General - Sinfonía del Desierto"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark placeholder:text-slate-500"
+              className={CLASE_CAMPO}
             />
           </div>
 
@@ -171,7 +172,7 @@ export default function ProfesorMaterialPage() {
               value={categoria}
               onChange={(evento) => setCategoria(evento.target.value)}
               placeholder="Ej: Partitura"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark placeholder:text-slate-500"
+              className={CLASE_CAMPO}
             />
           </div>
 
@@ -182,7 +183,7 @@ export default function ProfesorMaterialPage() {
             <select
               value={tipo}
               onChange={(evento) => setTipo(evento.target.value as TipoArchivo)}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark placeholder:text-slate-500"
+              className={CLASE_CAMPO}
             >
               <option value="pdf">PDF</option>
               <option value="mp3">MP3</option>
@@ -206,7 +207,7 @@ export default function ProfesorMaterialPage() {
 
           {errorSubida && (
             <div className="sm:col-span-2">
-              <p className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+              <p className={CLASE_ERROR}>
                 {errorSubida}
               </p>
             </div>

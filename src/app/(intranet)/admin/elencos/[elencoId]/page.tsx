@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
+import { coincideNombre } from "@/lib/usuarios";
 import { listarMiembrosDeElenco, obtenerElenco } from "@/services/elencos.service";
 import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
@@ -28,18 +29,12 @@ import type {
   MiembroElenco,
   UsuarioAdmin,
 } from "@/types";
+import { CLASE_CAMPO } from "@/components/ui/estilos";
 
 const ETIQUETA_CARGO: Record<CargoDocente, string> = {
   titular: "Titular",
   asistente: "Asistente",
 };
-
-/** Búsqueda por nombre. Por RUT completo se busca en el servidor (ver useBusquedaPorRut). */
-function coincideNombre(usuario: UsuarioAdmin, termino: string): boolean {
-  const t = termino.trim().toLowerCase();
-  if (!t) return true;
-  return `${usuario.nombres} ${usuario.apellidos}`.toLowerCase().includes(t);
-}
 
 export default function AdminElencoDetallePage() {
   const { elencoId } = useParams<{ elencoId: string }>();
@@ -408,12 +403,12 @@ export default function AdminElencoDetallePage() {
                 placeholder="Buscar por nombre o RUT completo..."
                 value={busquedaProfesor}
                 onChange={(evento) => setBusquedaProfesor(evento.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark placeholder:text-slate-500"
+                className={CLASE_CAMPO}
               />
               <select
                 value={usuarioIdProfesor}
                 onChange={(evento) => setUsuarioIdProfesor(evento.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark"
+                className={CLASE_CAMPO}
               >
                 <option value="">
                   {candidatosProfesor.length === 0
@@ -429,7 +424,7 @@ export default function AdminElencoDetallePage() {
               <select
                 value={cargoDocente}
                 onChange={(evento) => setCargoDocente(evento.target.value as CargoDocente)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark"
+                className={CLASE_CAMPO}
               >
                 <option value="titular">Titular</option>
                 <option value="asistente">Asistente</option>
@@ -507,12 +502,12 @@ export default function AdminElencoDetallePage() {
                 placeholder="Buscar por nombre o RUT completo..."
                 value={busquedaAlumno}
                 onChange={(evento) => setBusquedaAlumno(evento.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark placeholder:text-slate-500"
+                className={CLASE_CAMPO}
               />
               <select
                 value={usuarioIdAlumno}
                 onChange={(evento) => setUsuarioIdAlumno(evento.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark"
+                className={CLASE_CAMPO}
               >
                 <option value="">
                   {candidatosAlumno.length === 0

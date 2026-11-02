@@ -23,6 +23,7 @@ import {
 import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { Modal } from "@/components/ui/Modal";
 import type { ModoFormularioClase } from "./FormularioClase";
+import { CLASE_ERROR } from "@/components/ui/estilos";
 
 interface DetalleOcurrenciaProps {
   ocurrencia: Ocurrencia;
@@ -206,7 +207,7 @@ export function DetalleOcurrencia({
         )}
 
         {error && (
-          <p role="alert" className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+          <p role="alert" className={CLASE_ERROR}>
             {error}
           </p>
         )}

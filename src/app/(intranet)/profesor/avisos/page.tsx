@@ -10,6 +10,7 @@ import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import type { Aviso, ConId, Elenco } from "@/types";
+import { CLASE_CAMPO, CLASE_ERROR } from "@/components/ui/estilos";
 
 interface AvisoConElenco {
   aviso: ConId<Aviso>;
@@ -123,7 +124,7 @@ export default function ProfesorAvisosPage() {
                 <select
                   value={elencoIdFinal}
                   onChange={(evento) => setElencoSeleccionado(evento.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark placeholder:text-slate-500"
+                  className={CLASE_CAMPO}
                 >
                   {elencos.map((elenco) => (
                     <option key={elenco.id} value={elenco.id}>
@@ -143,7 +144,7 @@ export default function ProfesorAvisosPage() {
                   value={titulo}
                   onChange={(evento) => setTitulo(evento.target.value)}
                   placeholder="Ej: Ensayo general este sábado"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark placeholder:text-slate-500"
+                  className={CLASE_CAMPO}
                 />
               </div>
 
@@ -157,7 +158,7 @@ export default function ProfesorAvisosPage() {
                   value={contenido}
                   onChange={(evento) => setContenido(evento.target.value)}
                   placeholder="Detalle del aviso..."
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark placeholder:text-slate-500 resize-none"
+                  className={`${CLASE_CAMPO} resize-none`}
                 />
               </div>
 
@@ -172,7 +173,7 @@ export default function ProfesorAvisosPage() {
               </label>
 
               {errorPublicar && (
-                <p className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                <p className={CLASE_ERROR}>
                   {errorPublicar}
                 </p>
               )}

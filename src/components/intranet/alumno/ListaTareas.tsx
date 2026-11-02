@@ -7,6 +7,7 @@ import { obtenerUsuario } from "@/services/usuarios.service";
 import { TareaItem } from "@/components/intranet/alumno/TareaItem";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import type { ConId, Tarea } from "@/types";
+import { CLASE_ERROR } from "@/components/ui/estilos";
 
 interface ListaTareasProps {
   tareas: ConId<Tarea>[];
@@ -120,7 +121,7 @@ export function ListaTareas({ tareas, alumnoId, nombresElencos, columnas = 2 }: 
       {error && (
         <p
           role="alert"
-          className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3"
+          className={CLASE_ERROR}
         >
           {error}
         </p>

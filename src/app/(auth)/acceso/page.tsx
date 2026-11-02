@@ -7,6 +7,7 @@ import { rutEsValido } from "@/lib/auth/rut";
 import { formatearRutInput } from "@/lib/format";
 import { MarcoAuth } from "@/components/auth/MarcoAuth";
 import { solicitarAccesoAction } from "./actions";
+import { CLASE_CAMPO_ACCESO } from "@/components/ui/estilos";
 
 export default function AccesoPage() {
   const [rut, setRut] = useState("");
@@ -79,7 +80,7 @@ export default function AccesoPage() {
                 required
                 autoComplete="username"
                 maxLength={12}
-                className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-base font-medium text-text-dark placeholder:text-slate-500"
+                className={CLASE_CAMPO_ACCESO}
               />
             </div>
           </div>

@@ -12,6 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { MarcoAuth } from "@/components/auth/MarcoAuth";
 import type { RolUsuario } from "@/types";
 import { obtenerIdentificadorAction } from "./actions";
+import { CLASE_CAMPO_ACCESO } from "@/components/ui/estilos";
 
 const RUTA_POR_ROL: Record<RolUsuario, string> = {
   alumno: "/alumno",
@@ -19,8 +20,6 @@ const RUTA_POR_ROL: Record<RolUsuario, string> = {
   administrador: "/admin",
 };
 
-const CLASE_INPUT =
-  "w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-base font-medium text-text-dark placeholder:text-slate-500";
 const CLASE_LABEL = "block text-sm font-bold text-slate-700 mb-2 px-1";
 
 export default function LoginPage() {
@@ -93,7 +92,7 @@ export default function LoginPage() {
               autoComplete="username"
               maxLength={12}
               inputMode="text"
-              className={CLASE_INPUT}
+              className={CLASE_CAMPO_ACCESO}
             />
           </div>
         </div>
@@ -113,7 +112,7 @@ export default function LoginPage() {
               onChange={(evento) => setPassword(evento.target.value)}
               required
               autoComplete="current-password"
-              className={CLASE_INPUT}
+              className={CLASE_CAMPO_ACCESO}
             />
           </div>
         </div>

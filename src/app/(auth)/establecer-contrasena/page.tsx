@@ -14,6 +14,7 @@ import { LONGITUD_MINIMA_PASSWORD } from "@/lib/validacion";
 import { MarcoAuth } from "@/components/auth/MarcoAuth";
 import type { RolUsuario } from "@/types";
 import { confirmarActivacionAction } from "./actions";
+import { CLASE_CAMPO_ACCESO } from "@/components/ui/estilos";
 
 const RUTA_POR_ROL: Record<RolUsuario, string> = {
   alumno: "/alumno",
@@ -21,8 +22,6 @@ const RUTA_POR_ROL: Record<RolUsuario, string> = {
   administrador: "/admin",
 };
 
-const CLASE_INPUT =
-  "w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-base font-medium text-text-dark placeholder:text-slate-500";
 const CLASE_LABEL = "block text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 px-1";
 
 type EstadoEnlace = "verificando" | "valido" | "invalido";
@@ -161,7 +160,7 @@ function FormularioEstablecerContrasena() {
             minLength={LONGITUD_MINIMA_PASSWORD}
             autoComplete="new-password"
             autoFocus
-            className={CLASE_INPUT}
+            className={CLASE_CAMPO_ACCESO}
           />
         </div>
         <p className="text-xs text-slate-600 font-medium mt-2 px-1">
@@ -182,7 +181,7 @@ function FormularioEstablecerContrasena() {
             onChange={(evento) => setConfirmacion(evento.target.value)}
             required
             autoComplete="new-password"
-            className={CLASE_INPUT}
+            className={CLASE_CAMPO_ACCESO}
           />
         </div>
       </div>
