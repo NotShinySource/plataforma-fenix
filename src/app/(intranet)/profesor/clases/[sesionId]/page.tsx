@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { formatearDuracion, formatearFechaLegible } from "@/lib/clases/calendario";
 import { suscribirSesion } from "@/services/clases.service";
 import { esMiembroDeElenco, listarMiembrosDeElenco, obtenerElenco } from "@/services/elencos.service";
-import { listarAsistenciasPorSesion } from "@/services/asistencias.service";
+import { listarAsistenciasPorSesion, listarObservacionesPorSesion } from "@/services/asistencias.service";
 import { obtenerUsuario } from "@/services/usuarios.service";
 import {
   ESTILO_ESTADO_SESION,
@@ -82,10 +82,11 @@ export default function ClaseEnCursoPage() {
         setAcceso(esMiembro);
         if (!esMiembro) return;
 
-        const [elenco, membresias, registros] = await Promise.all([
+        const [elenco, membresias, registros, observaciones] = await Promise.all([
           obtenerElenco(elencoId!),
           listarMiembrosDeElenco(elencoId!, "alumno"),
-          listarAsistenciasPorSesion(sesionId),
+          listarAsistenciasPorSesion(elencoId!, sesionId),
+          listarObservacionesPorSesion(elencoId!, sesionId),
         ]);
         const porAlumno = new Map(registros.map((registro) => [registro.alumnoId, registro]));
 
@@ -98,7 +99,7 @@ export default function ClaseEnCursoPage() {
               nombre: alumno ? `${alumno.nombres} ${alumno.apellidos}` : "Alumno",
               estado:
                 registro?.estado === "presente" || registro?.estado === "ausente" ? registro.estado : null,
-              observaciones: registro?.observaciones ?? "",
+              observaciones: observaciones[membresia.usuarioId] ?? "",
             };
           })
         );

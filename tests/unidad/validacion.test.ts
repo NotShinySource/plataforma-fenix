@@ -4,6 +4,7 @@ import {
   esFechaNacimientoValida,
   normalizarEmail,
   validarAdjunto,
+  validarArchivoMaterial,
 } from "@/lib/validacion";
 
 const MEGABYTE = 1024 * 1024;
@@ -61,5 +62,19 @@ describe("validarAdjunto", () => {
     expect(validarAdjunto(archivo("partitura.sib", 1000), "PDF")).not.toBeNull();
     expect(validarAdjunto(archivo("pista.ogg", 1000), "Audio")).not.toBeNull();
     expect(validarAdjunto(archivo("partitura.pdf", 1000), "Audio")).not.toBeNull();
+  });
+});
+
+describe("validarArchivoMaterial", () => {
+  it("acepta cada formato dentro de su límite", () => {
+    expect(validarArchivoMaterial(archivo("score.pdf", 25 * MEGABYTE), "pdf")).toBeNull();
+    expect(validarArchivoMaterial(archivo("pista.MP3", 50 * MEGABYTE), "mp3")).toBeNull();
+    expect(validarArchivoMaterial(archivo("pista.wav", 1000), "wav")).toBeNull();
+  });
+
+  it("rechaza tamaños excedidos y extensiones que no calzan con el tipo elegido", () => {
+    expect(validarArchivoMaterial(archivo("score.pdf", 25 * MEGABYTE + 1), "pdf")).not.toBeNull();
+    expect(validarArchivoMaterial(archivo("pista.wav", 1000), "mp3")).not.toBeNull();
+    expect(validarArchivoMaterial(archivo("score.musx", 1000), "pdf")).not.toBeNull();
   });
 });

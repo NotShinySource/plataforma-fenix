@@ -1,18 +1,18 @@
 rules_version = '2';
 
 // ============================================================================
-// REGLAS TEMPORALES SIMPLIFICADAS — mismo criterio que firestore.rules (ver
-// el comentario ahí). Cualquier usuario autenticado
-// puede LEER cualquier objeto. Para ESCRIBIR, solo dentro de una carpeta
-// asociada a su propio uid (usuarios/{uid}/**), o dentro de la carpeta de un
-// elenco (elencos/{elencoId}/**) si tiene membresía activa como profesor en
-// ese elenco — verificado en vivo contra Firestore (miembros_elenco,
-// decisión 4.2.2) vía firestore.get()/firestore.exists(), no duplicado a
-// mano en Storage. NO valida más matices que eso (p. ej. no impide que un
-// profesor de OTRO elenco distinto al que sube el archivo lo intente si
-// conociera el elencoId correcto y tuviera membresía ahí — la separación es
-// por elenco, no por archivo individual). A endurecer junto con
-// firestore.rules antes de cualquier despliegue a producción real.
+// Reglas de Storage de la Plataforma Fénix.
+//
+// Los archivos de un elenco viven en elencos/{elencoId}/{carpeta}/{archivo}:
+//   - pdf, mp3, wav: material de estudio;
+//   - tareas: adjunto de una tarea (PDF o audio).
+// Pertenencia y rol se comprueban contra Firestore (miembros_elenco), igual
+// que en firestore.rules. Tamaño y formato se validan aquí, en el servidor,
+// aunque el formulario ya los revise antes de subir.
+//
+// Nota: getDownloadURL() entrega un enlace con token que no pasa por estas
+// reglas. Esos enlaces solo se guardan en documentos que Firestore deja leer
+// a los miembros del elenco.
 // ============================================================================
 
 service firebase.storage {
@@ -22,24 +22,64 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function esAdmin() {
+      return autenticado() && request.auth.token.rol == 'administrador';
+    }
+
+    function rutaMembresia(elencoId) {
+      return /databases/(default)/documents/miembros_elenco/$(elencoId + '_' + request.auth.uid);
+    }
+
+    function esMiembro(elencoId) {
+      return autenticado()
+        && firestore.exists(rutaMembresia(elencoId))
+        && firestore.get(rutaMembresia(elencoId)).data.activo == true;
+    }
+
     function esProfesorDelElenco(elencoId) {
-      let membresiaId = elencoId + '_' + request.auth.uid;
-      let rutaMembresia = /databases/(default)/documents/miembros_elenco/$(membresiaId);
-      return firestore.exists(rutaMembresia) &&
-        firestore.get(rutaMembresia).data.rolEnElenco == 'profesor';
+      return esMiembro(elencoId)
+        && request.auth.token.rol == 'profesor'
+        && firestore.get(rutaMembresia(elencoId)).data.rolEnElenco == 'profesor';
     }
 
-    // Lectura abierta a cualquier autenticado, sin importar la ruta.
-    match /{allPaths=**} {
-      allow read: if autenticado();
+    function megabytes(cantidad) {
+      return cantidad * 1024 * 1024;
     }
 
-    match /usuarios/{uid}/{allPaths=**} {
-      allow write: if autenticado() && request.auth.uid == uid;
+    function esPdf() {
+      return request.resource.contentType == 'application/pdf'
+        && request.resource.size <= megabytes(25);
     }
 
-    match /elencos/{elencoId}/{allPaths=**} {
-      allow write: if autenticado() && esProfesorDelElenco(elencoId);
+    function esMp3() {
+      return request.resource.contentType == 'audio/mpeg'
+        && request.resource.size <= megabytes(50);
     }
+
+    function esWav() {
+      return request.resource.contentType in ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave']
+        && request.resource.size <= megabytes(50);
+    }
+
+    function formatoPermitido(carpeta) {
+      return (carpeta == 'pdf' && esPdf())
+        || (carpeta == 'mp3' && esMp3())
+        || (carpeta == 'wav' && esWav())
+        || (carpeta == 'tareas' && (esPdf() || esMp3() || esWav()));
+    }
+
+    match /elencos/{elencoId}/{carpeta}/{archivo} {
+      allow read: if esAdmin() || esMiembro(elencoId);
+      // Solo archivos nuevos: un archivo subido no se reemplaza. Subir sobre
+      // una ruta existente también cuenta como "create", por eso se exige
+      // que no haya un objeto previo (resource == null).
+      allow create: if resource == null
+        && esProfesorDelElenco(elencoId)
+        && formatoPermitido(carpeta);
+      allow delete: if esProfesorDelElenco(elencoId);
+      allow update: if false;
+    }
+
+    // Cualquier otra ruta queda cerrada.
   }
 }

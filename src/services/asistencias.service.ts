@@ -8,6 +8,7 @@ import type { Asistencia, ConId } from "@/types";
  * través de un Server Action que verifica al docente en el servidor.
  */
 const COLECCION = "asistencias";
+const COLECCION_OBSERVACIONES = "observaciones_asistencia";
 
 function mapAsistencia(id: string, data: DocumentData): ConId<Asistencia> {
   return {
@@ -17,16 +18,45 @@ function mapAsistencia(id: string, data: DocumentData): ConId<Asistencia> {
     profesorId: data.profesorId,
     fechaSesion: data.fechaSesion,
     estado: data.estado,
-    observaciones: data.observaciones,
     sesionId: data.sesionId,
     fechaRegistro: timestampADate(data.fechaRegistro),
   };
 }
 
-/** Asistencia tomada en una sesión de clase (incluye las observaciones del docente). */
-export async function listarAsistenciasPorSesion(sesionId: string): Promise<ConId<Asistencia>[]> {
-  const snap = await getDocs(query(collection(db, COLECCION), where("sesionId", "==", sesionId)));
+/**
+ * Asistencia tomada en una sesión de clase. Se filtra también por elenco
+ * porque las reglas dejan leerla según el elenco: sin ese filtro, Firestore
+ * no puede garantizar que todos los resultados sean de un elenco del docente.
+ */
+export async function listarAsistenciasPorSesion(
+  elencoId: string,
+  sesionId: string
+): Promise<ConId<Asistencia>[]> {
+  const snap = await getDocs(
+    query(
+      collection(db, COLECCION),
+      where("elencoId", "==", elencoId),
+      where("sesionId", "==", sesionId)
+    )
+  );
   return snap.docs.map((d) => mapAsistencia(d.id, d.data()));
+}
+
+/** Observaciones internas del docente en una sesión, por alumno (solo docentes y Dirección). */
+export async function listarObservacionesPorSesion(
+  elencoId: string,
+  sesionId: string
+): Promise<Record<string, string>> {
+  const snap = await getDocs(
+    query(
+      collection(db, COLECCION_OBSERVACIONES),
+      where("elencoId", "==", elencoId),
+      where("sesionId", "==", sesionId)
+    )
+  );
+  const porAlumno: Record<string, string> = {};
+  snap.docs.forEach((d) => (porAlumno[d.data().alumnoId as string] = d.data().texto as string));
+  return porAlumno;
 }
 
 /**

@@ -11,6 +11,7 @@ import { EstadoError } from "@/components/ui/EstadoError";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import type { Aviso, ConId, Elenco } from "@/types";
 import { CLASE_CAMPO, CLASE_ERROR } from "@/components/ui/estilos";
+import { LONGITUD_MAXIMA_CONTENIDO_AVISO, LONGITUD_MAXIMA_TITULO_AVISO } from "@/lib/validacion";
 
 interface AvisoConElenco {
   aviso: ConId<Aviso>;
@@ -118,10 +119,11 @@ export default function ProfesorAvisosPage() {
             <h3 className="text-lg font-extrabold text-text-dark">Publicar nuevo aviso</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                <label htmlFor="elencoAviso" className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Elenco
                 </label>
                 <select
+                  id="elencoAviso"
                   value={elencoIdFinal}
                   onChange={(evento) => setElencoSeleccionado(evento.target.value)}
                   className={CLASE_CAMPO}
@@ -135,12 +137,14 @@ export default function ProfesorAvisosPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                <label htmlFor="tituloAviso" className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Título
                 </label>
                 <input
+                  id="tituloAviso"
                   type="text"
                   required
+                  maxLength={LONGITUD_MAXIMA_TITULO_AVISO}
                   value={titulo}
                   onChange={(evento) => setTitulo(evento.target.value)}
                   placeholder="Ej: Ensayo general este sábado"
@@ -149,11 +153,13 @@ export default function ProfesorAvisosPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                <label htmlFor="contenidoAviso" className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Contenido
                 </label>
                 <textarea
+                  id="contenidoAviso"
                   required
+                  maxLength={LONGITUD_MAXIMA_CONTENIDO_AVISO}
                   rows={4}
                   value={contenido}
                   onChange={(evento) => setContenido(evento.target.value)}

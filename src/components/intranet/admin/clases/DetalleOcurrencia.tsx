@@ -14,7 +14,7 @@ import {
   editarOcurrenciaAction,
   eliminarSerieAction,
 } from "@/app/(intranet)/admin/clases/actions";
-import { listarAsistenciasPorSesion } from "@/services/asistencias.service";
+import { listarAsistenciasPorSesion, listarObservacionesPorSesion } from "@/services/asistencias.service";
 import { obtenerUsuario } from "@/services/usuarios.service";
 import {
   ESTILO_ESTADO_SESION,
@@ -64,8 +64,11 @@ export function DetalleOcurrencia({
     if (!dictada && ocurrencia.estado !== "en_curso") return;
     let cancelado = false;
 
-    listarAsistenciasPorSesion(ocurrencia.sesionId)
-      .then((registros) =>
+    Promise.all([
+      listarAsistenciasPorSesion(ocurrencia.elencoId, ocurrencia.sesionId),
+      listarObservacionesPorSesion(ocurrencia.elencoId, ocurrencia.sesionId),
+    ])
+      .then(([registros, observaciones]) =>
         Promise.all(
           registros.map(async (registro) => {
             const alumno = await obtenerUsuario(registro.alumnoId).catch(() => null);
@@ -73,7 +76,7 @@ export function DetalleOcurrencia({
               id: registro.id,
               nombre: alumno ? `${alumno.nombres} ${alumno.apellidos}` : "Alumno",
               estado: registro.estado,
-              observaciones: registro.observaciones,
+              observaciones: observaciones[registro.alumnoId],
             };
           })
         )
@@ -88,7 +91,7 @@ export function DetalleOcurrencia({
     return () => {
       cancelado = true;
     };
-  }, [dictada, ocurrencia.estado, ocurrencia.sesionId]);
+  }, [dictada, ocurrencia.estado, ocurrencia.elencoId, ocurrencia.sesionId]);
 
   async function ejecutar(accion: (idTokenAdmin: string) => Promise<{ ok: boolean; error?: string }>) {
     const usuario = auth.currentUser;
