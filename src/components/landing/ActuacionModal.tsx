@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { Calendar, ChevronLeft, ChevronRight, ExternalLink, MapPin, X } from "lucide-react";
 
@@ -142,17 +143,23 @@ function ContenidoModal({ actuacion, onCerrar }: { actuacion: Actuacion; onCerra
           onTouchEnd={handleToqueFin}
         >
           <AnimatePresence initial={false}>
-            <motion.img
+            <motion.div
               key={indice}
-              src={actuacion.imagenes[indice]}
-              alt={`${actuacion.titulo} — imagen ${indice + 1} de ${total}`}
               initial={{ opacity: 0, x: direccion * 60 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: direccion * -60 }}
               transition={{ duration: 0.35 }}
-              className="absolute inset-0 w-full h-full object-cover"
-              draggable={false}
-            />
+              className="absolute inset-0"
+            >
+              <Image
+                src={actuacion.imagenes[indice]}
+                alt={`${actuacion.titulo} — imagen ${indice + 1} de ${total}`}
+                fill
+                sizes="(max-width: 896px) 100vw, 896px"
+                className="object-cover"
+                draggable={false}
+              />
+            </motion.div>
           </AnimatePresence>
 
           {total > 1 && (
@@ -205,8 +212,7 @@ function ContenidoModal({ actuacion, onCerrar }: { actuacion: Actuacion; onCerra
                   i === indice ? "border-primary" : "border-transparent opacity-60 hover:opacity-100"
                 }`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element -- imagen externa, sin next.config.remotePatterns configurado para este dominio todavía */}
-                <img src={imagen} alt="" className="w-full h-full object-cover" />
+                <Image src={imagen} alt="" width={80} height={56} className="w-full h-full object-cover" />
               </button>
             ))}
           </div>

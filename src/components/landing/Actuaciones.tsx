@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { motion } from "motion/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ActuacionModal, type Actuacion } from "./ActuacionModal";
@@ -189,11 +190,12 @@ export function Actuaciones() {
               className="shrink-0 snap-start w-full md:w-[calc((100%-2rem)/2)] lg:w-[calc((100%-6rem)/4)] text-left bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-xl hover:shadow-primary/5 transition-all group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element -- imagen externa, sin next.config.remotePatterns configurado para este dominio todavía */}
-                <img
+                <Image
                   src={actuacion.imagenes[0]}
                   alt={actuacion.titulo}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 300px"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-primary uppercase tracking-wider shadow-sm border border-slate-100">
                   {actuacion.lugar}
