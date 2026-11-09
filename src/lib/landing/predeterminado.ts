@@ -34,7 +34,7 @@ export const CONTENIDO_PREDETERMINADO: ContenidoLanding = {
     cifras: [
       { valor: "12", etiqueta: "Docentes Expertos" },
       { valor: "700+", etiqueta: "Alumnos Activos" },
-      { valor: "Ex Lolos", etiqueta: "Sede Histórica" },
+      { valor: "Centro de Arte", etiqueta: "Ojo del Desierto" },
     ],
     pilares: [
       {

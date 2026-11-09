@@ -8,6 +8,14 @@ import { TextoDestacado } from "./TextoDestacado";
 /** Colores de las tres cifras, en el mismo orden en que se editan. */
 const COLOR_CIFRA = ["text-primary", "text-terracotta", "text-indigo-600"];
 
+/**
+ * Una cifra sin dígitos ("Centro de Arte") es un nombre, no un número: valor y
+ * etiqueta se muestran como dos líneas del mismo tamaño en vez de número + rótulo.
+ */
+function esNombre(valor: string): boolean {
+  return !/\d/.test(valor);
+}
+
 /** Ícono y color de los dos pilares, en el mismo orden en que se editan. */
 const ESTILO_PILAR = [
   { icono: CheckCircle2, clase: "bg-primary/10 text-primary" },
@@ -41,18 +49,32 @@ export function Organizacion({ organizacion }: { organizacion: ContenidoLanding[
                 </p>
               ))}
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-6">
+              {/* Entre lg y xl la columna es angosta: la tercera tarjeta baja a su propia fila. */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-6 pt-6">
                 {organizacion.cifras.map((cifra, indice) => (
                   <div
                     key={indice}
                     className={`p-4 bg-white rounded-2xl border border-slate-100 shadow-sm ${
-                      indice === 2 ? "col-span-2 md:col-span-1" : ""
+                      indice === 2 ? "col-span-2 md:col-span-1 lg:col-span-2 xl:col-span-1" : ""
                     }`}
                   >
-                    <span className={`text-2xl font-black block ${COLOR_CIFRA[indice]}`}>{cifra.valor}</span>
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 block">
-                      {cifra.etiqueta}
-                    </span>
+                    {esNombre(cifra.valor) ? (
+                      // Un nombre (p. ej. la sede) se lee en dos líneas del mismo tamaño:
+                      // "Centro de Arte" / "Ojo del Desierto".
+                      <span className={`text-lg font-black leading-snug block ${COLOR_CIFRA[indice]}`}>
+                        <span className="block">{cifra.valor}</span>
+                        <span className="block">{cifra.etiqueta}</span>
+                      </span>
+                    ) : (
+                      <>
+                        <span className={`text-2xl font-black block ${COLOR_CIFRA[indice]}`}>
+                          {cifra.valor}
+                        </span>
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 block">
+                          {cifra.etiqueta}
+                        </span>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
