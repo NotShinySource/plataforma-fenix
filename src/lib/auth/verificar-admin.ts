@@ -7,11 +7,10 @@ export type VerificarAdminResultado =
 
 /**
  * Reverifica en el servidor, con el Admin SDK, que un ID token pertenezca a
- * un administrador. Los Server Actions son endpoints públicos y la
- * protección de rutas hoy es solo del lado del cliente (proxy.ts real queda
- * pendiente) — cada Server Action de Admin debe
- * llamar esto antes de escribir nada con el Admin SDK, en vez de confiar en
- * que solo se llega ahí desde la pantalla de Admin.
+ * un administrador. Los Server Actions son endpoints públicos: cada uno de
+ * Admin debe llamar esto antes de escribir nada con el Admin SDK, en vez de
+ * confiar en que solo se llega ahí desde la pantalla de Admin o en que
+ * proxy.ts ya revisó la sesión.
  */
 export async function verificarAdmin(idToken: string): Promise<VerificarAdminResultado> {
   try {

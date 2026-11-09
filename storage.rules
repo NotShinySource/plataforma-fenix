@@ -3,6 +3,7 @@ rules_version = '2';
 // ============================================================================
 // Reglas de Storage de la Plataforma Fénix.
 //
+// Las imágenes públicas de la Landing viven en landing/{portada|actuaciones}/.
 // Los archivos de un elenco viven en elencos/{elencoId}/{carpeta}/{archivo}:
 //   - pdf, mp3, wav: material de estudio;
 //   - tareas: adjunto de una tarea (PDF o audio).
@@ -77,6 +78,19 @@ service firebase.storage {
         && esProfesorDelElenco(elencoId)
         && formatoPermitido(carpeta);
       allow delete: if esProfesorDelElenco(elencoId);
+      allow update: if false;
+    }
+
+    // Imágenes de la Landing: públicas, porque las ve cualquier visitante.
+    // Solo el Administrador sube (JPG, PNG o WebP de hasta 5 MB) o borra.
+    match /landing/{carpeta}/{archivo} {
+      allow read: if true;
+      allow create: if resource == null
+        && esAdmin()
+        && carpeta in ['portada', 'actuaciones']
+        && request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp']
+        && request.resource.size <= megabytes(5);
+      allow delete: if esAdmin();
       allow update: if false;
     }
 

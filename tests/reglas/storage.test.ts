@@ -76,3 +76,32 @@ describe("lectura y eliminación", () => {
     await assertFails(subir("admin", "otra/ruta.pdf", bytes(10), PDF));
   });
 });
+
+describe("imágenes de la Landing", () => {
+  const JPG = { contentType: "image/jpeg" };
+
+  it("cualquiera puede verlas, incluso sin sesión", async () => {
+    await entorno.withSecurityRulesDisabled(async (contexto) => {
+      await contexto.storage().ref("landing/portada/foto.jpg").put(bytes(10), JPG);
+    });
+    await assertSucceeds(entorno.unauthenticatedContext().storage().ref("landing/portada/foto.jpg").getMetadata());
+  });
+  it("solo la Dirección sube imágenes, en las carpetas previstas", async () => {
+    await assertSucceeds(subir("admin", "landing/actuaciones/nueva.jpg", bytes(1000), JPG));
+    await assertFails(subir("profe", "landing/actuaciones/nueva2.jpg", bytes(1000), JPG));
+    await assertFails(subir("admin", "landing/otra/nueva.jpg", bytes(1000), JPG));
+  });
+  it("solo JPG, PNG o WebP de hasta 5 MB", async () => {
+    await assertSucceeds(subir("admin", "landing/portada/a.webp", bytes(1000), { contentType: "image/webp" }));
+    await assertFails(subir("admin", "landing/portada/b.gif", bytes(1000), { contentType: "image/gif" }));
+    await assertFails(subir("admin", "landing/portada/c.svg", bytes(1000), { contentType: "image/svg+xml" }));
+    await assertFails(subir("admin", "landing/portada/d.jpg", bytes(5 * MEGABYTE + 1), JPG));
+  });
+  it("un alumno no borra imágenes de la Landing", async () => {
+    await entorno.withSecurityRulesDisabled(async (contexto) => {
+      await contexto.storage().ref("landing/portada/foto.jpg").put(bytes(10), JPG);
+    });
+    await assertFails(ref("alumno", "landing/portada/foto.jpg").delete());
+    await assertSucceeds(ref("admin", "landing/portada/foto.jpg").delete());
+  });
+});

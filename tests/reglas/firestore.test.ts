@@ -254,6 +254,11 @@ describe("solo servidor y colecciones desconocidas", () => {
     await assertFails(db("admin").doc("datos_privados/alumno").get());
     await assertFails(db("admin").doc("solicitudes_acceso/alumno").get());
   });
+  it("el contenido de la Landing no se lee ni escribe desde el navegador", async () => {
+    await assertFails(anonimo().doc("contenido_landing/general").get());
+    await assertFails(db("admin").doc("contenido_landing/general").set({ contenido: {} }));
+    await assertFails(db("admin").collection("actuaciones_landing").add({ titulo: "x" }));
+  });
   it("una colección que no está en las reglas queda denegada", async () => {
     await assertFails(db("admin").collection("cualquier_cosa").add({ a: 1 }));
     await assertFails(db("admin").doc("cualquier_cosa/x").get());

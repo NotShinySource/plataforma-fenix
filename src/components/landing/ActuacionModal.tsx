@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
+import { sinOptimizar } from "@/lib/landing/imagen";
 import { AnimatePresence, motion } from "motion/react";
 import { Calendar, ChevronLeft, ChevronRight, ExternalLink, MapPin, X } from "lucide-react";
 
@@ -12,7 +13,7 @@ export type EnlaceActuacion = {
 };
 
 export type Actuacion = {
-  id: number;
+  id: string;
   titulo: string;
   fecha: string;
   lugar: string;
@@ -153,6 +154,7 @@ function ContenidoModal({ actuacion, onCerrar }: { actuacion: Actuacion; onCerra
             >
               <Image
                 src={actuacion.imagenes[indice]}
+                unoptimized={sinOptimizar(actuacion.imagenes[indice])}
                 alt={`${actuacion.titulo} — imagen ${indice + 1} de ${total}`}
                 fill
                 sizes="(max-width: 896px) 100vw, 896px"
@@ -212,7 +214,14 @@ function ContenidoModal({ actuacion, onCerrar }: { actuacion: Actuacion; onCerra
                   i === indice ? "border-primary" : "border-transparent opacity-60 hover:opacity-100"
                 }`}
               >
-                <Image src={imagen} alt="" width={80} height={56} className="w-full h-full object-cover" />
+                <Image
+                  src={imagen}
+                  alt=""
+                  width={80}
+                  height={56}
+                  unoptimized={sinOptimizar(imagen)}
+                  className="w-full h-full object-cover"
+                />
               </button>
             ))}
           </div>

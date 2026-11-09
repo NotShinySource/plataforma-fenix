@@ -244,6 +244,16 @@ service cloud.firestore {
 
     // ------------------------------------------- Solo para el servidor
 
+    // Contenido de la Landing: lo escribe el Administrador mediante Server
+    // Actions y lo lee el servidor al armar la página pública.
+    match /contenido_landing/{documento} {
+      allow read, write: if false;
+    }
+
+    match /actuaciones_landing/{actuacionId} {
+      allow read, write: if false;
+    }
+
     // Datos personales cifrados (RUT, correos, fecha de nacimiento) y el
     // contador de solicitudes de acceso. Ni el propio usuario puede leerlos.
     match /datos_privados/{uid} {
