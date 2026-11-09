@@ -2,113 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { sinOptimizar } from "@/lib/landing/imagen";
 import { motion } from "motion/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ActuacionModal, type Actuacion } from "./ActuacionModal";
 
 /**
- * Contenido estático a propósito (sin Firestore): la gestión dinámica de la
- * Landing Page es responsabilidad del Admin completo, fuera de alcance hoy.
- *
- * - `imagenes`: la primera es la portada de la tarjeta; el resto aparece en el carrusel del pop-up.
- * - `enlaces` (opcional): links relacionados (video, nota de prensa, álbum, etc.).
- *   Si se omite o queda vacío, la sección no se muestra.
+ * Carrusel de actuaciones. El contenido lo edita el Administrador desde el
+ * panel y llega ya filtrado: solo las publicadas, en su orden.
  */
-const ACTUACIONES: Actuacion[] = [
-  {
-    id: 1,
-    titulo: "Coco un poco loco",
-    fecha: "22 Agosto, 2026",
-    lugar: "Teatro Municipal de Calama",
-    imagenes: [
-      "/imagenes/actuaciones/coco/CocoP.jpg",
-      "/imagenes/actuaciones/coco/Coco1.jpg",
-      "/imagenes/actuaciones/coco/Coco2.jpg",
-      "/imagenes/actuaciones/coco/Coco3.jpg",
-      "/imagenes/actuaciones/coco/Coco4.jpg",
-      "/imagenes/actuaciones/coco/Coco5.jpg",
-      "/imagenes/actuaciones/coco/Coco6.jpg",
-      "/imagenes/actuaciones/coco/CocoBanda.jpg",
-    ],
-    // TODO: reemplazar por la descripción oficial del evento.
-    descripcion: "Presentación de «Coco un poco loco» en el Teatro Municipal de Calama.",
-    enlaces: [{ etiqueta: "Ver video", url: "https://www.facebook.com/reel/1038820222308490" }],
-  },
-  {
-    id: 2,
-    titulo: "Rey León",
-    fecha: "13 Diciembre, 2024",
-    lugar: "Teatro Municipal de Calama",
-    imagenes: [
-      "/imagenes/actuaciones/Rey/ReyP.jpg",
-      "/imagenes/actuaciones/Rey/Rey1.jpg",
-      "/imagenes/actuaciones/Rey/Rey2.jpg",
-      "/imagenes/actuaciones/Rey/Rey3.jpg",
-      "/imagenes/actuaciones/Rey/Rey4.jpg",
-      "/imagenes/actuaciones/Rey/Rey5.jpg",
-      "/imagenes/actuaciones/Rey/Rey6.jpg",
-      "/imagenes/actuaciones/Rey/Rey7.jpg",
-      "/imagenes/actuaciones/Rey/Rey8.jpg",
-      "/imagenes/actuaciones/Rey/Rey9.jpg",
-    ],
-    // TODO: reemplazar por la descripción oficial del evento.
-    descripcion: "Presentación de «Rey León» en el Teatro Municipal de Calama.",
-  },
-  {
-    id: 3,
-    titulo: "Concierto Santa Cecilia",
-    fecha: "22 Noviembre, 2025",
-    lugar: "Parque José Saavedra",
-    imagenes: [
-      "/imagenes/actuaciones/Cecilia/CeciliaP.jpg",
-      "/imagenes/actuaciones/Cecilia/Cecilia1.jpg",
-      "/imagenes/actuaciones/Cecilia/Cecilia2.jpg",
-      "/imagenes/actuaciones/Cecilia/Cecilia3.jpg",
-      "/imagenes/actuaciones/Cecilia/Cecilia4.jpg",
-      "/imagenes/actuaciones/Cecilia/Cecilia5.jpg",
-      "/imagenes/actuaciones/Cecilia/Cecilia6.jpg",
-    ],
-    // TODO: reemplazar por la descripción oficial del evento.
-    descripcion: "Presentación de «Concierto Santa Cecilia» en el Parque José Saavedra.",
-  },
-  {
-    id: 4,
-    titulo: "Aladdin El Musical",
-    fecha: "30 Agosto, 2025",
-    lugar: "Teatro Municipal de Calama",
-    imagenes: [
-      "/imagenes/actuaciones/Aladin/AladinP.jpg",
-      "/imagenes/actuaciones/Aladin/Aladin1.jpg",
-      "/imagenes/actuaciones/Aladin/Aladin2.jpg",
-      "/imagenes/actuaciones/Aladin/Aladin3.jpg",
-      "/imagenes/actuaciones/Aladin/Aladin4.jpg",
-      "/imagenes/actuaciones/Aladin/Aladin5.jpg",
-      "/imagenes/actuaciones/Aladin/Aladin7.jpg",
-      "/imagenes/actuaciones/Aladin/Aladin8.jpg",
-      "/imagenes/actuaciones/Aladin/Aladin9.jpg",
-    ],
-    // TODO: reemplazar por la descripción oficial del evento.
-    descripcion: "Presentación de «Aladdin El Musical» en el Teatro Municipal de Calama.",
-  },
-  {
-    id: 5,
-    titulo: "Concierto de Navidad",
-    fecha: "13 Diciembre, 2025",
-    lugar: "Parque Loa",
-    imagenes: [
-      "/imagenes/actuaciones/Navidad/Navip.jpg",
-      "/imagenes/actuaciones/Navidad/Navi1.jpg",
-      "/imagenes/actuaciones/Navidad/Navi2.jpg",
-      "/imagenes/actuaciones/Navidad/Navi3.jpg",
-      "/imagenes/actuaciones/Navidad/Navi4.jpg",
-      "/imagenes/actuaciones/Navidad/Navi5.jpg",
-    ],
-    // TODO: reemplazar por la descripción oficial del evento.
-    descripcion: "Presentación de «Concierto de Navidad» en el Parque Loa.",
-  },
-];
-
-export function Actuaciones() {
+export function Actuaciones({ actuaciones }: { actuaciones: Actuacion[] }) {
   const [seleccionada, setSeleccionada] = useState<Actuacion | null>(null);
   const cerrarModal = useCallback(() => setSeleccionada(null), []);
 
@@ -174,6 +77,12 @@ export function Actuaciones() {
           </p>
         </motion.div>
 
+        {actuaciones.length === 0 && (
+          <p className="text-center text-slate-500 font-medium">
+            Pronto compartiremos aquí nuestras próximas presentaciones.
+          </p>
+        )}
+
         <motion.div
           ref={carruselRef}
           initial={{ opacity: 0, y: 20 }}
@@ -182,7 +91,7 @@ export function Actuaciones() {
           transition={{ duration: 0.5 }}
           className="flex gap-8 overflow-x-auto snap-x snap-mandatory scroll-smooth py-4 -my-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {ACTUACIONES.map((actuacion) => (
+          {actuaciones.map((actuacion) => (
             <button
               type="button"
               key={actuacion.id}
@@ -192,6 +101,7 @@ export function Actuaciones() {
               <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
                 <Image
                   src={actuacion.imagenes[0]}
+                  unoptimized={sinOptimizar(actuacion.imagenes[0])}
                   alt={actuacion.titulo}
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 300px"

@@ -7,6 +7,7 @@ export * from "./tarea";
 export * from "./clase";
 export * from "./datos-privados";
 export * from "./solicitud-acceso";
+export * from "./landing";
 
 /** Añade el ID del documento a un tipo de dominio al leerlo de Firestore. */
 export type ConId<T> = T & { id: string };

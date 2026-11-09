@@ -98,3 +98,19 @@ export function validarAdjunto(archivo: File, tipo: "PDF" | "Audio"): string | n
   }
   return null;
 }
+
+/** Imágenes de la Landing (restricciones R2 y R4). storage.rules exige lo mismo. */
+const MAXIMO_IMAGEN_LANDING = 5 * MEGABYTE;
+const EXTENSIONES_IMAGEN_LANDING = [".jpg", ".jpeg", ".png", ".webp"];
+
+export const ACCEPT_IMAGEN_LANDING = ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp";
+
+/** Devuelve el mensaje de error, o null si la imagen es aceptable. */
+export function validarImagenLanding(archivo: File): string | null {
+  const nombre = archivo.name.toLowerCase();
+  if (!EXTENSIONES_IMAGEN_LANDING.some((extension) => nombre.endsWith(extension))) {
+    return "La imagen debe ser JPG, PNG o WebP.";
+  }
+  if (archivo.size > MAXIMO_IMAGEN_LANDING) return "La imagen no puede superar los 5 MB.";
+  return null;
+}

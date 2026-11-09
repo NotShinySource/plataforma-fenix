@@ -4,8 +4,12 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { BookOpen, ChevronRight, Users } from "lucide-react";
 import Image from "next/image";
+import { sinOptimizar } from "@/lib/landing/imagen";
+import type { ContenidoLanding } from "@/types";
+import { TextoDestacado } from "./TextoDestacado";
 
-export function Hero() {
+export function Hero({ portada }: { portada: ContenidoLanding["portada"] }) {
+  const [tarjetaAlumnos, tarjetaMatricula] = portada.tarjetas;
   return (
     <section
       id="inicio"
@@ -25,14 +29,13 @@ export function Hero() {
           >
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-terracotta/10 text-terracotta text-xs font-bold uppercase tracking-wider">
               <span className="w-1.5 h-1.5 rounded-full bg-terracotta animate-pulse" />
-              Música para el Futuro
+              {portada.etiqueta}
             </span>
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-text-dark tracking-tight leading-[1.1]">
-              El impacto del arte en la <span className="text-primary">comunidad</span> loína
+              <TextoDestacado texto={portada.titulo} claseDestacado="text-primary" />
             </h1>
             <p className="text-lg md:text-xl text-slate-500 font-medium leading-relaxed max-w-2xl mx-auto lg:mx-0">
-              Transformamos vidas a través de la educación musical gratuita y de excelencia.
-              Fomentando el compañerismo, la disciplina y el rescate cultural en Calama.
+              {portada.descripcion}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
               <a
@@ -61,24 +64,26 @@ export function Hero() {
               <div className="absolute -inset-4 bg-gradient-to-tr from-primary/10 via-terracotta/10 to-primary-light/10 blur-2xl opacity-60 rounded-[40px] group-hover:scale-105 transition-transform duration-500" />
 
               <div className="relative bg-white p-4 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/50">
-                <Image
-                  src="/imagenes/inicio/principal.jpg"
-                  alt="Elencos de Calambanda en concierto"
-                  width={1628}
-                  height={1110}
-                  preload
-                  sizes="(min-width: 1024px) 40vw, 100vw"
-                  className="w-full h-auto rounded-2xl object-cover aspect-[4/3] shadow-inner"
-                />
+                <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-inner">
+                  <Image
+                    src={portada.imagen.url}
+                    alt="Elencos de Calambanda en concierto"
+                    fill
+                    preload
+                    unoptimized={sinOptimizar(portada.imagen.url)}
+                    sizes="(min-width: 1024px) 40vw, 100vw"
+                    className="object-cover"
+                  />
+                </div>
 
                 <div className="absolute -bottom-6 -left-6 bg-white p-4 rounded-2xl shadow-xl border border-slate-50 flex items-center gap-3">
                   <div className="bg-terracotta/10 p-2.5 rounded-xl text-terracotta">
                     <Users className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-xl font-extrabold text-text-dark leading-none">700+</p>
+                    <p className="text-xl font-extrabold text-text-dark leading-none">{tarjetaAlumnos.valor}</p>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                      Estudiantes activos
+                      {tarjetaAlumnos.etiqueta}
                     </p>
                   </div>
                 </div>
@@ -88,9 +93,9 @@ export function Hero() {
                     <BookOpen className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-text-dark leading-none">Matrícula 100%</p>
+                    <p className="text-sm font-bold text-text-dark leading-none">{tarjetaMatricula.valor}</p>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                      Gratuita
+                      {tarjetaMatricula.etiqueta}
                     </p>
                   </div>
                 </div>
