@@ -13,6 +13,7 @@ import { auth } from "@/lib/firebase/client";
 import { LONGITUD_MINIMA_PASSWORD } from "@/lib/validacion";
 import { valorDelCampo } from "@/lib/formulario";
 import { MarcoAuth } from "@/components/auth/MarcoAuth";
+import { AvisoLegal } from "@/components/auth/AvisoLegal";
 import type { RolUsuario } from "@/types";
 import { RUTA_POR_ROL } from "@/lib/auth/rutas";
 import { confirmarActivacionAction } from "./actions";
@@ -203,6 +204,8 @@ function FormularioEstablecerContrasena() {
       >
         {guardando ? "Guardando..." : "Guardar contraseña"}
       </button>
+
+      <AvisoLegal />
     </form>
   );
 }
