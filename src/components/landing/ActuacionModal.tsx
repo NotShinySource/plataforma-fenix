@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import { fuenteLanding } from "./fuente";
 import Image from "next/image";
 import { sinOptimizar } from "@/lib/landing/imagen";
 import { AnimatePresence, motion } from "motion/react";
@@ -110,7 +111,7 @@ function ContenidoModal({ actuacion, onCerrar }: { actuacion: Actuacion; onCerra
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/70 backdrop-blur-sm"
+      className={`${fuenteLanding.className} fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/70 backdrop-blur-sm`}
       onClick={onCerrar}
     >
       <motion.div

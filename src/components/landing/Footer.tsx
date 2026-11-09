@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { MapPin } from "lucide-react";
 import { FacebookIcon, InstagramIcon } from "./SocialIcons";
+import { EnlacesLegales } from "./EnlacesLegales";
 
 // Búsqueda por nombre: Google Maps abre la ficha del lugar aunque cambie su dirección exacta.
 const URL_MAPA_SEDE =
@@ -91,6 +92,7 @@ export function Footer() {
 
         <div className="pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
           <p>© {new Date().getFullYear()} Escuela de Música Calambanda. Todos los derechos reservados.</p>
+          <EnlacesLegales />
           <p className="flex items-center gap-1.5">
             Desarrollado con orgullo por <span className="text-white font-bold">Appa-tec</span>
           </p>
