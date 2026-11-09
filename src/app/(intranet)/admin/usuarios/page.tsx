@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Search, UserPlus, Users, X } from "lucide-react";
+import { CheckCircle2, Clock, Search, UserPlus, Users, X } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
+import { egresoVencido, MESES_CONSERVACION_EGRESADOS } from "@/lib/egreso";
 import { coincideNombre, compararPorApellido } from "@/lib/usuarios";
 import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
@@ -16,12 +17,15 @@ import {
 import { ModalEditarUsuario } from "@/components/intranet/admin/usuarios/ModalEditarUsuario";
 import { ModalEliminarUsuario } from "@/components/intranet/admin/usuarios/ModalEliminarUsuario";
 import { ModalEnlaceAcceso } from "@/components/intranet/admin/usuarios/ModalEnlaceAcceso";
+import { ModalEgreso } from "@/components/intranet/admin/usuarios/ModalEgreso";
+import { ModalEliminarEgresados } from "@/components/intranet/admin/usuarios/ModalEliminarEgresados";
 import { useBusquedaPorRut } from "@/hooks/useBusquedaPorRut";
 import { listarUsuariosAction } from "./actions";
 import type { EstadoActivacion, RolUsuario, UsuarioAdmin } from "@/types";
 
 type FiltroRol = "todos" | RolUsuario;
-type FiltroEstado = "todos" | EstadoActivacion;
+/** "pendiente" y "activada" se refieren a cuentas vigentes; las egresadas tienen su propio filtro. */
+type FiltroEstado = "todos" | EstadoActivacion | "egresado";
 
 const OPCIONES_ROL: { valor: FiltroRol; etiqueta: string }[] = [
   { valor: "todos", etiqueta: "Todos" },
@@ -33,7 +37,8 @@ const OPCIONES_ROL: { valor: FiltroRol; etiqueta: string }[] = [
 /** Qué ventana está abierta y sobre qué usuario. Solo puede haber una a la vez. */
 type Ventana =
   | { tipo: "crear" }
-  | { tipo: "editar" | "enlace" | "eliminar"; usuario: UsuarioAdmin }
+  | { tipo: "editar" | "enlace" | "eliminar" | "egresar" | "reactivar"; usuario: UsuarioAdmin }
+  | { tipo: "eliminar-egresados" }
   | null;
 
 export default function AdminUsuariosPage() {
@@ -50,6 +55,9 @@ export default function AdminUsuariosPage() {
   const [ventana, setVentana] = useState<Ventana>(null);
   const [borrador, setBorrador] = useState<BorradorUsuario>(BORRADOR_VACIO);
   const [creadoNombre, setCreadoNombre] = useState<string | null>(null);
+  const [eliminadosCantidad, setEliminadosCantidad] = useState<number | null>(null);
+  // Momento en que se abrió la página: referencia fija para saber qué egresos vencieron.
+  const [ahora] = useState(() => new Date());
 
   useEffect(() => {
     let cancelado = false;
@@ -85,14 +93,30 @@ export default function AdminUsuariosPage() {
     () =>
       usuarios
         .filter((u) => filtroRol === "todos" || u.rol === filtroRol)
-        .filter((u) => filtroEstado === "todos" || u.estadoActivacion === filtroEstado)
+        .filter((u) =>
+          filtroEstado === "todos"
+            ? true
+            : filtroEstado === "egresado"
+              ? u.activo === false
+              : u.activo !== false && u.estadoActivacion === filtroEstado
+        )
         // Un RUT completo se resuelve en el servidor; cualquier otro texto busca por nombre.
         .filter((u) => (busquedaRut.esRut ? u.id === busquedaRut.uid : coincideNombre(u, busqueda)))
         .sort(compararPorApellido),
     [usuarios, filtroRol, filtroEstado, busqueda, busquedaRut.esRut, busquedaRut.uid]
   );
 
-  const totalPendientes = usuarios.filter((u) => u.estadoActivacion === "pendiente").length;
+  const totalPendientes = usuarios.filter(
+    (u) => u.activo !== false && u.estadoActivacion === "pendiente"
+  ).length;
+  const totalEgresados = usuarios.filter((u) => u.activo === false).length;
+  const egresadosVencidos = useMemo(
+    () =>
+      usuarios
+        .filter((u) => u.activo === false && u.fechaEgreso && egresoVencido(u.fechaEgreso, ahora))
+        .sort(compararPorApellido),
+    [usuarios, ahora]
+  );
   const hayFiltros = busqueda.trim() !== "" || filtroRol !== "todos" || filtroEstado !== "todos";
 
   function cerrarVentana() {
@@ -118,7 +142,7 @@ export default function AdminUsuariosPage() {
               ? "Cargando..."
               : `${usuarios.length} ${usuarios.length === 1 ? "cuenta registrada" : "cuentas registradas"}${
                   totalPendientes > 0 ? ` · ${totalPendientes} sin activar` : ""
-                }`}
+                }${totalEgresados > 0 ? ` · ${totalEgresados} egresadas` : ""}`}
           </p>
         </div>
         <button
@@ -152,6 +176,46 @@ export default function AdminUsuariosPage() {
             className="p-1 rounded-lg text-emerald-700 hover:bg-emerald-100 transition-colors flex-shrink-0"
           >
             <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {eliminadosCantidad !== null && (
+        <div
+          role="status"
+          className="bg-emerald-50 border border-emerald-100 rounded-2xl px-5 py-4 flex items-start gap-3"
+        >
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+          <p className="flex-1 font-bold text-emerald-900 text-sm">
+            Se {eliminadosCantidad === 1 ? "eliminó 1 cuenta egresada" : `eliminaron ${eliminadosCantidad} cuentas egresadas`}.
+          </p>
+          <button
+            type="button"
+            onClick={() => setEliminadosCantidad(null)}
+            aria-label="Cerrar aviso"
+            className="p-1 rounded-lg text-emerald-700 hover:bg-emerald-100 transition-colors flex-shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {!cargandoUsuarios && egresadosVencidos.length > 0 && (
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <Clock className="w-5 h-5 text-amber-700 flex-shrink-0 hidden sm:block" />
+          <p className="flex-1 text-sm font-semibold text-amber-900 leading-relaxed">
+            {egresadosVencidos.length === 1
+              ? "1 cuenta egresada"
+              : `${egresadosVencidos.length} cuentas egresadas`}{" "}
+            ya cumplieron {MESES_CONSERVACION_EGRESADOS} meses. Según la Política de Privacidad,
+            deben eliminarse.
+          </p>
+          <button
+            type="button"
+            onClick={() => setVentana({ tipo: "eliminar-egresados" })}
+            className="bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 px-4 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap"
+          >
+            Revisar y eliminar
           </button>
         </div>
       )}
@@ -197,6 +261,7 @@ export default function AdminUsuariosPage() {
             <option value="todos">Todos los estados</option>
             <option value="pendiente">Sin activar</option>
             <option value="activada">Activas</option>
+            <option value="egresado">Egresadas</option>
           </select>
         </div>
 
@@ -229,6 +294,8 @@ export default function AdminUsuariosPage() {
             onEditar={(usuario) => setVentana({ tipo: "editar", usuario })}
             onEnlace={(usuario) => setVentana({ tipo: "enlace", usuario })}
             onEliminar={(usuario) => setVentana({ tipo: "eliminar", usuario })}
+            onEgresar={(usuario) => setVentana({ tipo: "egresar", usuario })}
+            onReactivar={(usuario) => setVentana({ tipo: "reactivar", usuario })}
           />
         )}
       </div>
@@ -254,6 +321,24 @@ export default function AdminUsuariosPage() {
           usuario={ventana.usuario}
           onCerrar={cerrarVentana}
           onEliminado={cerrarYRecargar}
+        />
+      )}
+      {(ventana?.tipo === "egresar" || ventana?.tipo === "reactivar") && (
+        <ModalEgreso
+          usuario={ventana.usuario}
+          accion={ventana.tipo}
+          onCerrar={cerrarVentana}
+          onListo={cerrarYRecargar}
+        />
+      )}
+      {ventana?.tipo === "eliminar-egresados" && (
+        <ModalEliminarEgresados
+          vencidos={egresadosVencidos}
+          onCerrar={cerrarVentana}
+          onEliminados={(cantidad) => {
+            setEliminadosCantidad(cantidad);
+            cerrarYRecargar();
+          }}
         />
       )}
     </>

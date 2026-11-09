@@ -7,6 +7,7 @@ import { timestampADate } from "@/lib/firebase/converters";
 import { generarEnlaceEstablecerContrasena } from "@/lib/auth/enlace-acceso";
 import { rutEsValido } from "@/lib/auth/rut";
 import { verificarAdmin } from "@/lib/auth/verificar-admin";
+import { egresoVencido } from "@/lib/egreso";
 import { formatearRutInput } from "@/lib/format";
 import { identificadorDesdeRut } from "@/lib/seguridad/cifrado";
 import {
@@ -233,6 +234,7 @@ export async function listarUsuariosAction(idTokenAdmin: string): Promise<Listar
         apellidos: data.apellidos,
         rol: data.rol,
         activo: data.activo,
+        ...(data.fechaEgreso ? { fechaEgreso: timestampADate(data.fechaEgreso) } : {}),
         estadoActivacion: data.estadoActivacion ?? "pendiente",
         fechaCreacion: timestampADate(data.fechaCreacion),
         rutEnmascarado: datos ? enmascararRut(datos.rut) : null,
@@ -454,6 +456,31 @@ export async function generarEnlaceAccesoAction(
   }
 }
 
+/**
+ * Borra la cuenta de Auth (con sus custom claims), usuarios/{uid},
+ * datos_privados/{uid}, solicitudes_acceso/{uid} y sus membresías. NO borra
+ * asistencias ni archivos: quedan como registro histórico. Quien la llama ya
+ * verificó que el que pide es administrador y que el objetivo no lo es.
+ */
+async function borrarCuenta(uid: string): Promise<void> {
+  // Revocar antes de borrar: una vez borrada la cuenta, revokeRefreshTokens
+  // fallaría con auth/user-not-found.
+  await authAdmin.revokeRefreshTokens(uid);
+  await authAdmin.deleteUser(uid);
+
+  const membresiasSnap = await dbAdmin
+    .collection("miembros_elenco")
+    .where("usuarioId", "==", uid)
+    .get();
+
+  const batch = dbAdmin.batch();
+  batch.delete(dbAdmin.collection("usuarios").doc(uid));
+  batch.delete(dbAdmin.collection("datos_privados").doc(uid));
+  batch.delete(dbAdmin.collection("solicitudes_acceso").doc(uid));
+  membresiasSnap.docs.forEach((membresiaDoc) => batch.delete(membresiaDoc.ref));
+  await batch.commit();
+}
+
 export interface EliminarUsuarioInput {
   uid: string;
   /** ID token del administrador que ejecuta la acción. */
@@ -498,23 +525,7 @@ export async function eliminarUsuarioAction(input: EliminarUsuarioInput): Promis
   }
 
   try {
-    // Revocar antes de borrar: una vez borrada la cuenta, revokeRefreshTokens
-    // fallaría con auth/user-not-found.
-    await authAdmin.revokeRefreshTokens(uid);
-    await authAdmin.deleteUser(uid);
-
-    const membresiasSnap = await dbAdmin
-      .collection("miembros_elenco")
-      .where("usuarioId", "==", uid)
-      .get();
-
-    const batch = dbAdmin.batch();
-    batch.delete(dbAdmin.collection("usuarios").doc(uid));
-    batch.delete(dbAdmin.collection("datos_privados").doc(uid));
-    batch.delete(dbAdmin.collection("solicitudes_acceso").doc(uid));
-    membresiasSnap.docs.forEach((membresiaDoc) => batch.delete(membresiaDoc.ref));
-    await batch.commit();
-
+    await borrarCuenta(uid);
     return { ok: true };
   } catch (error) {
     if (esErrorConCodigo(error, "auth/user-not-found")) {
@@ -522,5 +533,202 @@ export async function eliminarUsuarioAction(input: EliminarUsuarioInput): Promis
     }
     console.error("Error eliminando usuario desde Admin:", error);
     return { ok: false, error: "No se pudo eliminar el usuario. Intenta de nuevo." };
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Egreso                                                               */
+/* ------------------------------------------------------------------ */
+
+export interface EgresoInput {
+  uid: string;
+  idTokenAdmin: string;
+}
+
+/**
+ * Comprobaciones comunes a egresar y reactivar: quien llama es
+ * administrador, no actúa sobre sí mismo, y el objetivo existe y no es
+ * administrador (según su custom claim, la fuente de verdad del rol).
+ */
+async function validarObjetivoEgreso(
+  input: EgresoInput
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!input.uid || !input.idTokenAdmin) return { ok: false, error: "Solicitud inválida." };
+
+  const verificacion = await verificarAdmin(input.idTokenAdmin);
+  if (!verificacion.ok) return { ok: false, error: verificacion.error };
+  if (verificacion.uid === input.uid) {
+    return { ok: false, error: "No puedes cambiar el estado de tu propia cuenta." };
+  }
+
+  try {
+    const usuarioAuth = await authAdmin.getUser(input.uid);
+    if (usuarioAuth.customClaims?.rol === "administrador") {
+      return { ok: false, error: "Esta acción no aplica a administradores." };
+    }
+  } catch {
+    return { ok: false, error: "El usuario ya no existe." };
+  }
+  return { ok: true };
+}
+
+/**
+ * Egresa una cuenta (o da de baja a un docente): bloquea el inicio de sesión
+ * en Firebase Auth, cierra sus sesiones y la saca de sus elencos. Su
+ * historial (asistencia, clases) se conserva. Las membresías no se borran:
+ * quedan inactivas y marcadas, para devolverla a sus elencos si se reactiva.
+ */
+export async function egresarUsuarioAction(input: EgresoInput): Promise<ResultadoAccion> {
+  const validacion = await validarObjetivoEgreso(input);
+  if (!validacion.ok) return validacion;
+
+  const { uid } = input;
+  const usuarioRef = dbAdmin.collection("usuarios").doc(uid);
+
+  try {
+    const usuarioDoc = await usuarioRef.get();
+    if (!usuarioDoc.exists) return { ok: false, error: "El usuario ya no existe." };
+    if (usuarioDoc.data()?.activo === false) {
+      return { ok: false, error: "La cuenta ya está egresada." };
+    }
+
+    // Primero el bloqueo de acceso, que es lo importante: si lo demás falla,
+    // reintentar es seguro (la cuenta sigue figurando activa en Firestore).
+    await authAdmin.updateUser(uid, { disabled: true });
+    await authAdmin.revokeRefreshTokens(uid);
+
+    const membresiasSnap = await dbAdmin
+      .collection("miembros_elenco")
+      .where("usuarioId", "==", uid)
+      .where("activo", "==", true)
+      .get();
+
+    const elencos = await Promise.all(
+      membresiasSnap.docs.map((membresiaDoc) =>
+        dbAdmin.collection("elencos").doc(membresiaDoc.data().elencoId as string).get()
+      )
+    );
+
+    const batch = dbAdmin.batch();
+    batch.update(usuarioRef, { activo: false, fechaEgreso: FieldValue.serverTimestamp() });
+    membresiasSnap.docs.forEach((membresiaDoc) =>
+      batch.update(membresiaDoc.ref, { activo: false, bajaPorEgreso: true })
+    );
+    // Un docente titular que se va deja el elenco sin responsable.
+    elencos.forEach((elencoDoc) => {
+      if (elencoDoc.exists && elencoDoc.data()?.docenteResponsableId === uid) {
+        batch.update(elencoDoc.ref, { docenteResponsableId: "" });
+      }
+    });
+    await batch.commit();
+
+    return { ok: true };
+  } catch (error) {
+    console.error("Error egresando un usuario desde Admin:", error);
+    return { ok: false, error: "No se pudo egresar la cuenta. Intenta de nuevo." };
+  }
+}
+
+/**
+ * Reactiva una cuenta egresada (por ejemplo, si el alumno vuelve a
+ * matricularse): desbloquea el acceso y la devuelve a los elencos de los que
+ * salió por el egreso, si esos elencos todavía existen.
+ */
+export async function reactivarUsuarioAction(input: EgresoInput): Promise<ResultadoAccion> {
+  const validacion = await validarObjetivoEgreso(input);
+  if (!validacion.ok) return validacion;
+
+  const { uid } = input;
+  const usuarioRef = dbAdmin.collection("usuarios").doc(uid);
+
+  try {
+    const usuarioDoc = await usuarioRef.get();
+    if (!usuarioDoc.exists) return { ok: false, error: "El usuario ya no existe." };
+    if (usuarioDoc.data()?.activo !== false) {
+      return { ok: false, error: "La cuenta ya está activa." };
+    }
+
+    await authAdmin.updateUser(uid, { disabled: false });
+
+    const membresiasSnap = await dbAdmin
+      .collection("miembros_elenco")
+      .where("usuarioId", "==", uid)
+      .where("bajaPorEgreso", "==", true)
+      .get();
+
+    const elencos = await Promise.all(
+      membresiasSnap.docs.map((membresiaDoc) =>
+        dbAdmin.collection("elencos").doc(membresiaDoc.data().elencoId as string).get()
+      )
+    );
+
+    const batch = dbAdmin.batch();
+    batch.update(usuarioRef, { activo: true, fechaEgreso: FieldValue.delete() });
+    membresiasSnap.docs.forEach((membresiaDoc, indice) => {
+      const elencoDoc = elencos.at(indice);
+      if (!elencoDoc?.exists) {
+        batch.delete(membresiaDoc.ref); // el elenco se eliminó mientras estaba egresado
+        return;
+      }
+      batch.update(membresiaDoc.ref, { activo: true, bajaPorEgreso: FieldValue.delete() });
+      if (membresiaDoc.data().cargoDocente === "titular" && !elencoDoc.data()?.docenteResponsableId) {
+        batch.update(elencoDoc.ref, { docenteResponsableId: uid });
+      }
+    });
+    await batch.commit();
+
+    return { ok: true };
+  } catch (error) {
+    console.error("Error reactivando un usuario desde Admin:", error);
+    return { ok: false, error: "No se pudo reactivar la cuenta. Intenta de nuevo." };
+  }
+}
+
+export interface EliminarEgresadosResultado extends ResultadoAccion {
+  eliminados?: number;
+}
+
+/**
+ * Elimina las cuentas egresadas hace más de 12 meses, como indica la
+ * Política de Privacidad. Cuáles están vencidas se vuelve a calcular aquí
+ * con la fecha guardada en Firestore: no se confía en la lista que muestra
+ * el navegador.
+ */
+export async function eliminarEgresadosVencidosAction(
+  idTokenAdmin: string
+): Promise<EliminarEgresadosResultado> {
+  const verificacion = await verificarAdmin(idTokenAdmin);
+  if (!verificacion.ok) return { ok: false, error: verificacion.error };
+
+  try {
+    const egresadosSnap = await dbAdmin.collection("usuarios").where("activo", "==", false).get();
+    const vencidos = egresadosSnap.docs.filter((usuarioDoc) => {
+      const fechaEgreso = usuarioDoc.data().fechaEgreso;
+      return Boolean(fechaEgreso) && egresoVencido(timestampADate(fechaEgreso));
+    });
+
+    let eliminados = 0;
+    for (const usuarioDoc of vencidos) {
+      try {
+        const usuarioAuth = await authAdmin.getUser(usuarioDoc.id);
+        if (usuarioAuth.customClaims?.rol === "administrador") continue;
+        await borrarCuenta(usuarioDoc.id);
+        eliminados += 1;
+      } catch (error) {
+        console.error(`No se pudo eliminar la cuenta egresada ${usuarioDoc.id}:`, error);
+      }
+    }
+
+    if (eliminados < vencidos.length) {
+      return {
+        ok: false,
+        eliminados,
+        error: `Se eliminaron ${eliminados} de ${vencidos.length} cuentas. Intenta de nuevo para las restantes.`,
+      };
+    }
+    return { ok: true, eliminados };
+  } catch (error) {
+    console.error("Error eliminando cuentas egresadas vencidas:", error);
+    return { ok: false, error: "No se pudieron eliminar las cuentas. Intenta de nuevo." };
   }
 }

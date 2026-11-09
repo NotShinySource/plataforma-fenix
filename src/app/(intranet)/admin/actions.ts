@@ -33,11 +33,13 @@ export async function obtenerResumenAdminAction(idTokenAdmin: string): Promise<R
 
   try {
     const usuarios = dbAdmin.collection("usuarios");
-    const consultaPendientes = usuarios.where("estadoActivacion", "==", "pendiente");
+    // Las cuentas egresadas no cuentan como alumnos, docentes ni pendientes de activar.
+    const vigentes = usuarios.where("activo", "==", true);
+    const consultaPendientes = vigentes.where("estadoActivacion", "==", "pendiente");
 
     const [alumnos, profesores, elencos, pendientes, muestraPendientes] = await Promise.all([
-      usuarios.where("rol", "==", "alumno").count().get(),
-      usuarios.where("rol", "==", "profesor").count().get(),
+      vigentes.where("rol", "==", "alumno").count().get(),
+      vigentes.where("rol", "==", "profesor").count().get(),
       dbAdmin.collection("elencos").count().get(),
       consultaPendientes.count().get(),
       consultaPendientes.limit(5).get(),

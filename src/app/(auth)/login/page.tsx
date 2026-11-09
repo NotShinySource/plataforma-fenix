@@ -80,7 +80,14 @@ export default function LoginPage() {
 
       const siguiente = new URLSearchParams(window.location.search).get("siguiente");
       router.replace(destinoTrasLogin(rolUsuario, siguiente));
-    } catch {
+    } catch (error) {
+      // Firebase solo informa que la cuenta está inhabilitada si la
+      // contraseña es correcta, así que decirlo no revela qué RUT existen.
+      if ((error as { code?: string })?.code === "auth/user-disabled") {
+        setError("Tu cuenta está inhabilitada. Si sigues en la escuela, contacta a la administración.");
+        setEnviando(false);
+        return;
+      }
       // Mensaje genérico a propósito: no distinguir "RUT no existe" de
       // "contraseña incorrecta" para no dejar enumerar RUTs registrados.
       setError("RUT o contraseña incorrectos.");

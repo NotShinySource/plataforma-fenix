@@ -89,6 +89,7 @@ export function ColumnaMiembros({
       usuarios.filter(
         (u) =>
           u.rol === rol &&
+          u.activo !== false &&
           !idsMiembros.has(u.id) &&
           (busquedaRut.esRut ? u.id === busquedaRut.uid : coincideNombre(u, busqueda))
       ),
