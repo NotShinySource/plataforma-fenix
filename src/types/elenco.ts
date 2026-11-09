@@ -56,4 +56,9 @@ export interface MiembroElenco {
   /** Se escribe con serverTimestamp()/FieldValue.serverTimestamp() (decisión 4.2.9), nunca con Date del cliente. */
   fechaIngreso: Date;
   activo: boolean;
+  /**
+   * true si la membresía se desactivó porque el usuario egresó: al
+   * reactivar la cuenta, vuelve a su elenco automáticamente.
+   */
+  bajaPorEgreso?: boolean;
 }

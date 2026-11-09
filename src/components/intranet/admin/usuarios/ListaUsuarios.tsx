@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, KeyRound, Mail, Pencil, Trash2 } from "lucide-react";
+import { Eye, EyeOff, GraduationCap, KeyRound, Mail, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
+import { fechaEliminacionEgresado } from "@/lib/egreso";
+import { formatearFecha } from "@/lib/format";
 import { iniciales, nombreCompleto } from "@/lib/usuarios";
 import { obtenerDatosPrivadosAction } from "@/app/(intranet)/admin/usuarios/actions";
 import type { UsuarioAdmin } from "@/types";
-import { ESTILO_ROL, ETIQUETA_ESTADO, ETIQUETA_ROL } from "./etiquetas";
+import { ESTILO_ROL, ETIQUETA_ROL, estadoDe, textoAccionEgreso } from "./etiquetas";
 
 interface RutProtegidoProps {
   usuario: UsuarioAdmin;
@@ -49,11 +51,24 @@ export interface AccionesUsuario {
   onEditar: (usuario: UsuarioAdmin) => void;
   onEnlace: (usuario: UsuarioAdmin) => void;
   onEliminar: (usuario: UsuarioAdmin) => void;
+  onEgresar: (usuario: UsuarioAdmin) => void;
+  onReactivar: (usuario: UsuarioAdmin) => void;
 }
 
-/** Acciones por usuario. Enlace y Eliminar no aplican a administradores. */
-function AccionesFila({ usuario, onEditar, onEnlace, onEliminar }: AccionesUsuario & { usuario: UsuarioAdmin }) {
+/**
+ * Acciones por usuario. Enlace, Egresar y Eliminar no aplican a
+ * administradores. Una cuenta egresada no recibe enlaces: se reactiva primero.
+ */
+function AccionesFila({
+  usuario,
+  onEditar,
+  onEnlace,
+  onEliminar,
+  onEgresar,
+  onReactivar,
+}: AccionesUsuario & { usuario: UsuarioAdmin }) {
   const nombre = nombreCompleto(usuario);
+  const egresado = usuario.activo === false;
   const base = "inline-flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs transition-all";
   return (
     <div className="inline-flex items-center gap-2">
@@ -68,15 +83,38 @@ function AccionesFila({ usuario, onEditar, onEnlace, onEliminar }: AccionesUsuar
       </button>
       {usuario.rol !== "administrador" && (
         <>
-          <button
-            type="button"
-            onClick={() => onEnlace(usuario)}
-            aria-label={`Generar enlace de acceso para ${nombre}`}
-            className={`${base} bg-slate-100 hover:bg-slate-200 text-slate-700`}
-          >
-            <KeyRound className="w-3.5 h-3.5" />
-            Enlace
-          </button>
+          {egresado ? (
+            <button
+              type="button"
+              onClick={() => onReactivar(usuario)}
+              aria-label={`Reactivar la cuenta de ${nombre}`}
+              className={`${base} bg-emerald-50 hover:bg-emerald-100 text-emerald-700`}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reactivar
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => onEnlace(usuario)}
+                aria-label={`Generar enlace de acceso para ${nombre}`}
+                className={`${base} bg-slate-100 hover:bg-slate-200 text-slate-700`}
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                Enlace
+              </button>
+              <button
+                type="button"
+                onClick={() => onEgresar(usuario)}
+                aria-label={`${textoAccionEgreso(usuario.rol)}: ${nombre}`}
+                className={`${base} bg-slate-100 hover:bg-slate-200 text-slate-700`}
+              >
+                <GraduationCap className="w-3.5 h-3.5" />
+                {textoAccionEgreso(usuario.rol)}
+              </button>
+            </>
+          )}
           <button
             type="button"
             onClick={() => onEliminar(usuario)}
@@ -89,6 +127,23 @@ function AccionesFila({ usuario, onEditar, onEnlace, onEliminar }: AccionesUsuar
         </>
       )}
     </div>
+  );
+}
+
+/** Insignia de estado; una cuenta egresada indica desde cuándo puede eliminarse. */
+function EstadoUsuario({ usuario }: { usuario: UsuarioAdmin }) {
+  const estado = estadoDe(usuario);
+  return (
+    <span className="inline-flex flex-col items-start gap-1">
+      <span className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${estado.estilo}`}>
+        {estado.texto}
+      </span>
+      {usuario.activo === false && usuario.fechaEgreso && (
+        <span className="text-[11px] font-semibold text-slate-600 whitespace-nowrap">
+          Eliminable desde el {formatearFecha(fechaEliminacionEgresado(usuario.fechaEgreso))}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -167,9 +222,11 @@ export function ListaUsuarios({ usuarios, total, ...acciones }: ListaUsuariosPro
           </thead>
           <tbody className="divide-y divide-slate-100">
             {usuarios.map((usuario) => {
-              const estado = ETIQUETA_ESTADO[usuario.estadoActivacion];
               return (
-                <tr key={usuario.id} className="hover:bg-slate-50/50 transition-colors">
+                <tr
+                  key={usuario.id}
+                  className={`hover:bg-slate-50/50 transition-colors ${usuario.activo === false ? "opacity-70" : ""}`}
+                >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <Avatar usuario={usuario} />
@@ -191,9 +248,7 @@ export function ListaUsuarios({ usuarios, total, ...acciones }: ListaUsuariosPro
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${estado.estilo}`}>
-                      {estado.texto}
-                    </span>
+                    <EstadoUsuario usuario={usuario} />
                   </td>
                   <td className="px-6 py-4 text-right whitespace-nowrap">
                     <AccionesFila usuario={usuario} {...acciones} />
@@ -208,7 +263,6 @@ export function ListaUsuarios({ usuarios, total, ...acciones }: ListaUsuariosPro
       {/* Móvil: tarjetas */}
       <ul className="md:hidden divide-y divide-slate-100">
         {usuarios.map((usuario) => {
-          const estado = ETIQUETA_ESTADO[usuario.estadoActivacion];
           return (
             <li key={usuario.id} className="p-4 space-y-3">
               <div className="flex items-center gap-3 min-w-0">
@@ -222,9 +276,7 @@ export function ListaUsuarios({ usuarios, total, ...acciones }: ListaUsuariosPro
                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${ESTILO_ROL[usuario.rol]}`}>
                   {ETIQUETA_ROL[usuario.rol]}
                 </span>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold ${estado.estilo}`}>
-                  {estado.texto}
-                </span>
+                <EstadoUsuario usuario={usuario} />
               </div>
               <AccionesFila usuario={usuario} {...acciones} />
             </li>

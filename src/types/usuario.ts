@@ -16,7 +16,13 @@ export interface Usuario {
   nombres: string;
   apellidos: string;
   rol: RolUsuario;
+  /**
+   * false cuando la cuenta egresó (o el docente se dio de baja): no puede
+   * ingresar y no aparece en los elencos. Se puede reactivar.
+   */
   activo: boolean;
+  /** Cuándo egresó. Pasados 12 meses, la cuenta puede eliminarse (ver src/lib/egreso.ts). */
+  fechaEgreso?: Date;
   estadoActivacion: EstadoActivacion;
   /** Se escribe con serverTimestamp()/FieldValue.serverTimestamp() (decisión 4.2.9), nunca con Date del cliente. */
   fechaCreacion: Date;

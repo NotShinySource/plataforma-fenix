@@ -160,6 +160,9 @@ export async function agregarMiembroAction(
   if (!usuarioDoc.exists || usuarioDoc.data()?.rol !== rol) {
     return { ok: false, error: "El usuario no existe o no tiene el rol esperado." };
   }
+  if (usuarioDoc.data()?.activo === false) {
+    return { ok: false, error: "La cuenta está egresada. Reactívala antes de agregarla a un elenco." };
+  }
   if (membresiaDoc.exists && membresiaDoc.data()?.activo === true) {
     return { ok: false, error: "El usuario ya es miembro de este elenco." };
   }
