@@ -2,6 +2,10 @@ import Image from "next/image";
 import { MapPin } from "lucide-react";
 import { FacebookIcon, InstagramIcon } from "./SocialIcons";
 
+// Búsqueda por nombre: Google Maps abre la ficha del lugar aunque cambie su dirección exacta.
+const URL_MAPA_SEDE =
+  "https://www.google.com/maps/search/?api=1&query=Centro%20de%20Arte%20Ojo%20del%20Desierto%2C%20Calama";
+
 export function Footer() {
   return (
     <footer className="bg-slate-900 text-white pt-20 pb-12 relative overflow-hidden">
@@ -32,36 +36,44 @@ export function Footer() {
               Escuela de Música de la Corporación de Cultura y Turismo de Calama.
               Transformación artística en la Provincia de El Loa.
             </p>
-            <div className="flex gap-4 pt-2">
-              <a
-                href="https://www.facebook.com/calambanda"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2.5 bg-white/5 hover:bg-primary rounded-xl text-white transition-colors"
-                aria-label="Facebook"
-              >
-                <FacebookIcon className="w-5 h-5" />
-              </a>
-              <a
-                href="https://www.instagram.com/calambandaescuela"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2.5 bg-white/5 hover:bg-primary rounded-xl text-white transition-colors"
-                aria-label="Instagram"
-              >
-                <InstagramIcon className="w-5 h-5" />
-              </a>
-            </div>
           </div>
 
           <div className="md:col-span-4 space-y-4">
             <h4 className="font-extrabold text-sm uppercase tracking-wider text-terracotta-light">
-              Información y Contacto
+              Sede y Redes Sociales
             </h4>
-            <div className="space-y-3 font-medium text-sm text-slate-400">
-              <div className="flex items-center gap-3">
-                <MapPin className="w-4 h-4 text-slate-500" />
-                <span>Centro Arte Ojo Del Desierto</span>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-3 font-medium text-sm">
+              <a
+                href={URL_MAPA_SEDE}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-2 text-slate-300 hover:text-white transition-colors"
+                aria-label="Centro de Arte Ojo del Desierto, ver en Google Maps"
+              >
+                <MapPin className="w-4 h-4 text-terracotta-light flex-shrink-0" />
+                <span className="underline decoration-white/20 underline-offset-4 group-hover:decoration-white">
+                  Centro de Arte Ojo del Desierto
+                </span>
+              </a>
+              <div className="flex gap-3">
+                <a
+                  href="https://www.facebook.com/calambanda"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2.5 bg-white/5 hover:bg-primary rounded-xl text-white transition-colors"
+                  aria-label="Facebook"
+                >
+                  <FacebookIcon className="w-5 h-5" />
+                </a>
+                <a
+                  href="https://www.instagram.com/calambandaescuela"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2.5 bg-white/5 hover:bg-primary rounded-xl text-white transition-colors"
+                  aria-label="Instagram"
+                >
+                  <InstagramIcon className="w-5 h-5" />
+                </a>
               </div>
             </div>
           </div>
