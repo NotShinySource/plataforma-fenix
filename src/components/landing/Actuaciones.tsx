@@ -21,7 +21,9 @@ export function Actuaciones({ actuaciones }: { actuaciones: Actuacion[] }) {
 
   const actualizarPaginacion = useCallback(() => {
     const carrusel = carruselRef.current;
-    if (!carrusel) return;
+    // Sin ancho visible (pestaña en segundo plano, página aún sin dibujar) la
+    // división daría infinito y rompería los puntos de paginación.
+    if (!carrusel || carrusel.clientWidth === 0) return;
     const total = Math.max(1, Math.ceil(carrusel.scrollWidth / carrusel.clientWidth - 0.01));
     const maxScroll = carrusel.scrollWidth - carrusel.clientWidth;
     const actual =

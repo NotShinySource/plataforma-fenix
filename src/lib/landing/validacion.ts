@@ -23,7 +23,8 @@ export const LIMITES_LANDING = {
   descripcionPortada: 400,
   parrafo: 800,
   maximoParrafos: 4,
-  cifraValor: 20,
+  // Alcanza para un nombre, como "Centro de Arte Ojo del Desierto".
+  cifraValor: 40,
   cifraEtiqueta: 30,
   pilarTitulo: 40,
   pilarTexto: 250,

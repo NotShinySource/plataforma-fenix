@@ -9,8 +9,8 @@ import { TextoDestacado } from "./TextoDestacado";
 const COLOR_CIFRA = ["text-primary", "text-terracotta", "text-indigo-600"];
 
 /**
- * Una cifra sin dígitos ("Centro de Arte") es un nombre, no un número: valor y
- * etiqueta se muestran como dos líneas del mismo tamaño en vez de número + rótulo.
+ * Una cifra sin dígitos ("Centro de Arte Ojo del Desierto") es un nombre, no
+ * un número: se muestra en letra algo menor para que quepa en la tarjeta.
  */
 function esNombre(valor: string): boolean {
   return !/\d/.test(valor);
@@ -58,23 +58,18 @@ export function Organizacion({ organizacion }: { organizacion: ContenidoLanding[
                       indice === 2 ? "col-span-2 md:col-span-1 lg:col-span-2 xl:col-span-1" : ""
                     }`}
                   >
-                    {esNombre(cifra.valor) ? (
-                      // Un nombre (p. ej. la sede) se lee en dos líneas del mismo tamaño:
-                      // "Centro de Arte" / "Ojo del Desierto".
-                      <span className={`text-lg font-black leading-snug block ${COLOR_CIFRA[indice]}`}>
-                        <span className="block">{cifra.valor}</span>
-                        <span className="block">{cifra.etiqueta}</span>
-                      </span>
-                    ) : (
-                      <>
-                        <span className={`text-2xl font-black block ${COLOR_CIFRA[indice]}`}>
-                          {cifra.valor}
-                        </span>
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 block">
-                          {cifra.etiqueta}
-                        </span>
-                      </>
-                    )}
+                    {/* Un nombre (p. ej. la sede) va en letra algo menor y repartido en
+                        líneas parejas: "Centro de Arte / Ojo del Desierto". */}
+                    <span
+                      className={`font-black block ${COLOR_CIFRA[indice]} ${
+                        esNombre(cifra.valor) ? "text-lg leading-snug text-balance" : "text-2xl"
+                      }`}
+                    >
+                      {cifra.valor}
+                    </span>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 block">
+                      {cifra.etiqueta}
+                    </span>
                   </div>
                 ))}
               </div>

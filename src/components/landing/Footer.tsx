@@ -14,8 +14,8 @@ export function Footer() {
       <div className="absolute top-0 left-0 w-80 h-80 bg-terracotta/10 blur-[100px] rounded-full pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 pb-16 border-b border-white/10">
-          <div className="md:col-span-5 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-12 pb-16 border-b border-white/10">
+          <div className="md:col-span-2 lg:col-span-4 space-y-4">
             <div className="flex items-center gap-5">
               <Image
                 src="/imagenes/inicio/CALAMABANDA.png"
@@ -39,47 +39,51 @@ export function Footer() {
             </p>
           </div>
 
-          <div className="md:col-span-4 space-y-4">
+          <div className="lg:col-span-3 space-y-4">
             <h4 className="font-extrabold text-sm uppercase tracking-wider text-terracotta-light">
-              Sede y Redes Sociales
+              Cómo llegar
             </h4>
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-3 font-medium text-sm">
+            <a
+              href={URL_MAPA_SEDE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex items-center gap-2 font-medium text-sm text-slate-300 hover:text-white transition-colors"
+              aria-label="Centro de Arte Ojo del Desierto, ver en Google Maps"
+            >
+              <MapPin className="w-4 h-4 text-terracotta-light flex-shrink-0" />
+              <span className="underline decoration-white/20 underline-offset-4 group-hover:decoration-white">
+                Centro de Arte Ojo del Desierto
+              </span>
+            </a>
+          </div>
+
+          <div className="lg:col-span-2 space-y-4">
+            <h4 className="font-extrabold text-sm uppercase tracking-wider text-terracotta-light">
+              Nuestras redes
+            </h4>
+            <div className="flex gap-3">
               <a
-                href={URL_MAPA_SEDE}
+                href="https://www.facebook.com/calambanda"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-center gap-2 text-slate-300 hover:text-white transition-colors"
-                aria-label="Centro de Arte Ojo del Desierto, ver en Google Maps"
+                className="p-2.5 bg-white/5 hover:bg-primary rounded-xl text-white transition-colors"
+                aria-label="Facebook"
               >
-                <MapPin className="w-4 h-4 text-terracotta-light flex-shrink-0" />
-                <span className="underline decoration-white/20 underline-offset-4 group-hover:decoration-white">
-                  Centro de Arte Ojo del Desierto
-                </span>
+                <FacebookIcon className="w-5 h-5" />
               </a>
-              <div className="flex gap-3">
-                <a
-                  href="https://www.facebook.com/calambanda"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2.5 bg-white/5 hover:bg-primary rounded-xl text-white transition-colors"
-                  aria-label="Facebook"
-                >
-                  <FacebookIcon className="w-5 h-5" />
-                </a>
-                <a
-                  href="https://www.instagram.com/calambandaescuela"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2.5 bg-white/5 hover:bg-primary rounded-xl text-white transition-colors"
-                  aria-label="Instagram"
-                >
-                  <InstagramIcon className="w-5 h-5" />
-                </a>
-              </div>
+              <a
+                href="https://www.instagram.com/calambandaescuela"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2.5 bg-white/5 hover:bg-primary rounded-xl text-white transition-colors"
+                aria-label="Instagram"
+              >
+                <InstagramIcon className="w-5 h-5" />
+              </a>
             </div>
           </div>
 
-          <div className="md:col-span-3 space-y-4">
+          <div className="md:col-span-2 lg:col-span-3 space-y-4">
             <h4 className="font-extrabold text-sm uppercase tracking-wider text-primary-light">
               Soporte e Intranet
             </h4>
