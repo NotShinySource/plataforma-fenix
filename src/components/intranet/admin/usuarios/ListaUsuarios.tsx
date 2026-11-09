@@ -153,8 +153,8 @@ export function ListaUsuarios({ usuarios, total, ...acciones }: ListaUsuariosPro
 
   return (
     <>
-      {/* Escritorio: tabla */}
-      <div className="hidden md:block overflow-x-auto">
+      {/* Escritorio (desde 1024 px): tabla */}
+      <div className="hidden lg:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/60 text-left">
@@ -205,8 +205,8 @@ export function ListaUsuarios({ usuarios, total, ...acciones }: ListaUsuariosPro
         </table>
       </div>
 
-      {/* Móvil: tarjetas */}
-      <ul className="md:hidden divide-y divide-slate-100">
+      {/* Móvil y tablet: tarjetas, con las acciones siempre a la vista */}
+      <ul className="lg:hidden divide-y divide-slate-100">
         {usuarios.map((usuario) => {
           const estado = ETIQUETA_ESTADO[usuario.estadoActivacion];
           return (

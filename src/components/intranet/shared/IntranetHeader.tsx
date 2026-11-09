@@ -65,12 +65,12 @@ export function IntranetHeader({ nav }: IntranetHeaderProps) {
             </div>
           </div>
 
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-1">
             {nav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
                   estaActivo(item.href)
                     ? "bg-primary/10 text-primary"
                     : "text-slate-600 hover:bg-slate-50"
@@ -90,7 +90,7 @@ export function IntranetHeader({ nav }: IntranetHeaderProps) {
           </button>
         </div>
 
-        <nav className="flex md:hidden items-center gap-1 pb-3 -mt-1 overflow-x-auto">
+        <nav className="flex lg:hidden items-center gap-1 pb-3 -mt-1 overflow-x-auto">
           {nav.map((item) => (
             <Link
               key={item.href}
