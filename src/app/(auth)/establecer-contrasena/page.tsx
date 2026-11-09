@@ -11,6 +11,7 @@ import {
 import { Lock, ShieldCheck } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
 import { LONGITUD_MINIMA_PASSWORD } from "@/lib/validacion";
+import { valorDelCampo } from "@/lib/formulario";
 import { MarcoAuth } from "@/components/auth/MarcoAuth";
 import type { RolUsuario } from "@/types";
 import { RUTA_POR_ROL } from "@/lib/auth/rutas";
@@ -59,19 +60,20 @@ function FormularioEstablecerContrasena() {
     evento.preventDefault();
     setError(null);
     if (!codigo || !identificador) return;
+    const clave = valorDelCampo(evento.currentTarget, "password");
 
-    if (password.length < LONGITUD_MINIMA_PASSWORD) {
+    if (clave.length < LONGITUD_MINIMA_PASSWORD) {
       setError(`La contraseña debe tener al menos ${LONGITUD_MINIMA_PASSWORD} caracteres.`);
       return;
     }
-    if (password !== confirmacion) {
+    if (clave !== valorDelCampo(evento.currentTarget, "confirmacion")) {
       setError("Las contraseñas no coinciden.");
       return;
     }
 
     setGuardando(true);
     try {
-      await confirmPasswordReset(auth, codigo, password);
+      await confirmPasswordReset(auth, codigo, clave);
     } catch {
       setError("El enlace venció o ya fue usado. Solicita uno nuevo.");
       setEstadoEnlace("invalido");
@@ -82,7 +84,7 @@ function FormularioEstablecerContrasena() {
     // La contraseña ya quedó guardada. Entrar de inmediato evita que el
     // usuario tenga que volver a escribir su RUT y su clave recién creada.
     try {
-      const credencial = await signInWithEmailAndPassword(auth, identificador, password);
+      const credencial = await signInWithEmailAndPassword(auth, identificador, clave);
       await confirmarActivacionAction(await credencial.user.getIdToken());
       const token = await credencial.user.getIdTokenResult();
       const rol = token.claims.rol as RolUsuario | undefined;
@@ -142,7 +144,8 @@ function FormularioEstablecerContrasena() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+    // method="post": si se enviara sin JavaScript, la contraseña no queda en la URL.
+    <form method="post" onSubmit={handleSubmit} className="space-y-6" noValidate>
       <div>
         <label htmlFor="password" className={CLASE_LABEL}>
           Nueva contraseña

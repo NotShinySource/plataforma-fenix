@@ -4,13 +4,15 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { ArrowLeft, IdCard, KeyRound, MailCheck } from "lucide-react";
 import { rutEsValido } from "@/lib/auth/rut";
+import { valorDelCampo } from "@/lib/formulario";
 import { formatearRutInput } from "@/lib/format";
 import { MarcoAuth } from "@/components/auth/MarcoAuth";
+import { useHidratado } from "@/hooks/useHidratado";
 import { solicitarAccesoAction } from "./actions";
 import { CLASE_CAMPO_ACCESO } from "@/components/ui/estilos";
 
 export default function AccesoPage() {
-  const [rut, setRut] = useState("");
+  const hidratado = useHidratado();
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [enviado, setEnviado] = useState(false);
@@ -18,15 +20,16 @@ export default function AccesoPage() {
   async function handleSubmit(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     setError(null);
+    const rutIngresado = valorDelCampo(evento.currentTarget, "rut");
 
-    if (!rutEsValido(rut)) {
+    if (!rutEsValido(rutIngresado)) {
       setError("El RUT ingresado no es válido.");
       return;
     }
 
     setEnviando(true);
     try {
-      await solicitarAccesoAction(rut);
+      await solicitarAccesoAction(rutIngresado);
       setEnviado(true);
     } catch {
       setError("No se pudo procesar la solicitud. Intenta de nuevo en unos minutos.");
@@ -63,7 +66,9 @@ export default function AccesoPage() {
           </p>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        // method="post": si se enviara antes de que cargue el JavaScript, los datos
+        // no quedan en la URL. El botón además está desactivado hasta entonces.
+        <form method="post" onSubmit={handleSubmit} className="space-y-5" noValidate>
           <div>
             <label htmlFor="rut" className="block text-sm font-bold text-slate-700 mb-2 px-1">
               RUT
@@ -75,8 +80,8 @@ export default function AccesoPage() {
                 name="rut"
                 type="text"
                 placeholder="Ej: 21.345.678-9"
-                value={rut}
-                onChange={(evento) => setRut(formatearRutInput(evento.target.value))}
+                // Campo no controlado, por el mismo motivo que en el login.
+                onChange={(evento) => (evento.target.value = formatearRutInput(evento.target.value))}
                 required
                 autoComplete="username"
                 maxLength={12}
@@ -96,7 +101,7 @@ export default function AccesoPage() {
 
           <button
             type="submit"
-            disabled={enviando}
+            disabled={enviando || !hidratado}
             className="w-full bg-primary hover:bg-primary-dark text-white py-4 rounded-2xl font-bold text-sm tracking-tight transition-all shadow-lg shadow-primary/25 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {enviando ? "Enviando..." : "Enviar enlace"}
