@@ -17,6 +17,7 @@ import {
   type Tarea,
   type TipoAdjuntoTarea,
 } from "@/types";
+import { CLASE_CAMPO, CLASE_ERROR } from "@/components/ui/estilos";
 
 interface PanelTareaProps {
   elencos: ConId<Elenco>[];
@@ -27,9 +28,6 @@ interface PanelTareaProps {
 }
 
 const ICONO_ADJUNTO = { Ninguno: null, PDF: FileText, Audio: AudioLines } as const;
-
-const CLASE_CAMPO =
-  "w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark placeholder:text-slate-500 disabled:opacity-60";
 
 /** Panel lateral desplegable para asignar una tarea nueva o editar una existente. */
 export function PanelTarea({ elencos, profesorId, tareaAEditar, onCerrar }: PanelTareaProps) {
@@ -287,7 +285,7 @@ export function PanelTarea({ elencos, profesorId, tareaAEditar, onCerrar }: Pane
             {error && (
               <p
                 role="alert"
-                className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3"
+                className={CLASE_ERROR}
               >
                 {error}
               </p>

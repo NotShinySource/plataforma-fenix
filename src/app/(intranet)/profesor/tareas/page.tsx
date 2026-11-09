@@ -14,6 +14,7 @@ import { EstadoError } from "@/components/ui/EstadoError";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import { Modal } from "@/components/ui/Modal";
 import type { ConId, Tarea } from "@/types";
+import { CLASE_ERROR } from "@/components/ui/estilos";
 
 type EstadoPanel = { modo: "crear" } | { modo: "editar"; tarea: ConId<Tarea> } | null;
 
@@ -260,7 +261,7 @@ export default function ProfesorTareasPage() {
             {errorEliminar && (
               <p
                 role="alert"
-                className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3"
+                className={CLASE_ERROR}
               >
                 {errorEliminar}
               </p>

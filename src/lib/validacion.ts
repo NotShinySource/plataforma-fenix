@@ -4,7 +4,7 @@
  * endpoint público y se revalida siempre ahí).
  */
 
-export const LONGITUD_MAXIMA_EMAIL = 254;
+const LONGITUD_MAXIMA_EMAIL = 254;
 export const LONGITUD_MINIMA_PASSWORD = 8;
 
 /** Formato razonable de correo: algo@dominio.tld, sin espacios. No verifica que exista. */
@@ -39,7 +39,38 @@ export function esFechaNacimientoValida(fecha: string): boolean {
 
 export const LONGITUD_MAXIMA_TITULO_TAREA = 120;
 
+// Los mismos límites que exigen firestore.rules al crear el documento.
+export const LONGITUD_MAXIMA_TITULO_MATERIAL = 150;
+export const LONGITUD_MAXIMA_CATEGORIA_MATERIAL = 60;
+export const LONGITUD_MAXIMA_TITULO_AVISO = 150;
+export const LONGITUD_MAXIMA_CONTENIDO_AVISO = 5000;
+
 const MEGABYTE = 1024 * 1024;
+
+/**
+ * Formatos y tamaños máximos del material de estudio (restricciones R2 y R4).
+ * storage.rules exige lo mismo: esto solo da el aviso antes de subir.
+ */
+const LIMITES_MATERIAL = {
+  pdf: { extension: ".pdf", maximoBytes: 25 * MEGABYTE, etiqueta: "PDF de hasta 25 MB" },
+  mp3: { extension: ".mp3", maximoBytes: 50 * MEGABYTE, etiqueta: "audio .mp3 de hasta 50 MB" },
+  wav: { extension: ".wav", maximoBytes: 50 * MEGABYTE, etiqueta: "audio .wav de hasta 50 MB" },
+} as const;
+
+export const ACCEPT_MATERIAL = {
+  pdf: ".pdf,application/pdf",
+  mp3: ".mp3,audio/mpeg",
+  wav: ".wav,audio/wav,audio/x-wav",
+} as const;
+
+/** Devuelve el mensaje de error, o null si el archivo es aceptable. */
+export function validarArchivoMaterial(archivo: File, tipo: keyof typeof LIMITES_MATERIAL): string | null {
+  const limite = LIMITES_MATERIAL[tipo];
+  if (!archivo.name.toLowerCase().endsWith(limite.extension) || archivo.size > limite.maximoBytes) {
+    return `El archivo debe ser un ${limite.etiqueta}.`;
+  }
+  return null;
+}
 
 /** Formatos y tamaños máximos admitidos para el material adjunto de una tarea. */
 const LIMITES_ADJUNTO = {

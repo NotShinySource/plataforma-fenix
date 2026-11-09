@@ -21,6 +21,7 @@ import {
 } from "@/app/(intranet)/admin/clases/actions";
 import { Modal } from "@/components/ui/Modal";
 import type { ConId, Elenco, Semestre } from "@/types";
+import { CLASE_CAMPO, CLASE_ERROR } from "@/components/ui/estilos";
 
 export type ModoFormularioClase =
   | { modo: "crear"; fecha: string }
@@ -36,9 +37,6 @@ interface FormularioClaseProps {
 }
 
 const DURACIONES_RAPIDAS = [45, 60, 90, 120];
-
-const CLASE_CAMPO =
-  "w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark disabled:opacity-60";
 
 const TITULOS = {
   crear: "Nueva clase",
@@ -271,7 +269,7 @@ export function FormularioClase({
         )}
 
         {error && (
-          <p role="alert" className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+          <p role="alert" className={CLASE_ERROR}>
             {error}
           </p>
         )}

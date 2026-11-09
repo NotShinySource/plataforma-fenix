@@ -7,7 +7,7 @@ import { authAdmin } from "@/lib/firebase/admin";
  * Host de la petición: si dependiera de ella, alguien podría forzar correos
  * con enlaces que apunten a un sitio falso.
  */
-export function urlBaseApp(): string {
+function urlBaseApp(): string {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/+$/, "");
 
   // Variables que Vercel define solas en cada despliegue.

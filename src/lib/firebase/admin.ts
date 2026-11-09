@@ -56,5 +56,3 @@ const app: App =
 export const authAdmin: Auth = getAuth(app);
 export const dbAdmin: Firestore = getFirestore(app);
 export const storageAdmin: Storage = getStorage(app);
-
-export default app;

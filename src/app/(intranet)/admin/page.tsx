@@ -16,13 +16,8 @@ import { useAuth } from "@/context/AuthContext";
 import { obtenerUsuario } from "@/services/usuarios.service";
 import { EstadoError } from "@/components/ui/EstadoError";
 import { obtenerResumenAdminAction, type ResumenAdmin } from "./actions";
-import type { ConId, RolUsuario, Usuario } from "@/types";
-
-const ETIQUETA_ROL: Record<RolUsuario, string> = {
-  alumno: "Alumno",
-  profesor: "Docente",
-  administrador: "Administrador",
-};
+import { ETIQUETA_ROL } from "@/components/intranet/admin/usuarios/etiquetas";
+import type { ConId, Usuario } from "@/types";
 
 interface TarjetaCifraProps {
   icono: LucideIcon;

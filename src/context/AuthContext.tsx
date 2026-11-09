@@ -9,6 +9,7 @@ import {
 } from "react";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
+import { cerrarSesionServidorAction } from "@/app/(auth)/sesion-actions";
 import type { RolUsuario } from "@/types";
 
 interface AuthContextValue {
@@ -45,7 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return desuscribir;
   }, []);
 
+  // Se cierran las dos sesiones: la cookie del servidor y la de Firebase en el navegador.
   async function logout(): Promise<void> {
+    await cerrarSesionServidorAction();
     await signOut(auth);
   }
 

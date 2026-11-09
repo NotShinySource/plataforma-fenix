@@ -1,7 +1,6 @@
 import {
   collection,
   doc,
-  getDoc,
   getDocs,
   onSnapshot,
   query,
@@ -129,11 +128,6 @@ export async function listarSesionesDictadas(): Promise<ConId<SesionClase>[]> {
     )
   );
   return porEstado.flatMap((snap) => snap.docs.map((d) => mapSesion(d.id, d.data())));
-}
-
-export async function obtenerSesion(sesionId: string): Promise<ConId<SesionClase> | null> {
-  const snap = await getDoc(doc(db, COLECCION_SESIONES, sesionId));
-  return snap.exists() ? mapSesion(snap.id, snap.data()) : null;
 }
 
 /** La sesión en tiempo real, para la pantalla de la clase en curso. */

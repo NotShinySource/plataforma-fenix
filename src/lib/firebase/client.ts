@@ -42,5 +42,3 @@ if (useEmulator && !globalThis.__fenixEmulatorsConnected) {
   connectStorageEmulator(storage, "127.0.0.1", 9199);
   globalThis.__fenixEmulatorsConnected = true;
 }
-
-export default app;

@@ -3,24 +3,19 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { IdCard, Lock, Music } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
 import { rutEsValido } from "@/lib/auth/rut";
 import { formatearRutInput } from "@/lib/format";
 import { useAuth } from "@/context/AuthContext";
 import { MarcoAuth } from "@/components/auth/MarcoAuth";
+import { destinoTrasLogin, RUTA_POR_ROL } from "@/lib/auth/rutas";
 import type { RolUsuario } from "@/types";
 import { obtenerIdentificadorAction } from "./actions";
+import { haySesionServidorAction, iniciarSesionServidorAction } from "../sesion-actions";
+import { CLASE_CAMPO_ACCESO } from "@/components/ui/estilos";
 
-const RUTA_POR_ROL: Record<RolUsuario, string> = {
-  alumno: "/alumno",
-  profesor: "/profesor",
-  administrador: "/admin",
-};
-
-const CLASE_INPUT =
-  "w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-base font-medium text-text-dark placeholder:text-slate-500";
 const CLASE_LABEL = "block text-sm font-bold text-slate-700 mb-2 px-1";
 
 export default function LoginPage() {
@@ -32,13 +27,26 @@ export default function LoginPage() {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Si ya hay sesión activa (p. ej. se llegó a /login por error), no mostrar
-  // el formulario — mandar directo al dashboard que corresponde al rol.
+  // Si ya hay sesión activa (p. ej. se llegó a /login por error), mandar
+  // directo al panel del rol. Pero solo si el servidor también tiene la
+  // sesión: si el navegador conserva una sesión sin cookie (por ejemplo,
+  // abierta antes de que existiera la cookie, o la cookie venció), proxy.ts
+  // devolvería al usuario aquí en un ciclo. En ese caso se cierra la sesión
+  // del navegador y se pide la contraseña de nuevo.
+  // Mientras se envía el formulario no se revisa: la sesión del navegador ya
+  // existe pero la cookie todavía se está creando.
   useEffect(() => {
-    if (!cargandoSesion && usuario && rol) {
-      router.replace(RUTA_POR_ROL[rol]);
-    }
-  }, [cargandoSesion, usuario, rol, router]);
+    if (cargandoSesion || enviando || !usuario || !rol) return;
+    let cancelado = false;
+    haySesionServidorAction().then((hay) => {
+      if (cancelado) return;
+      if (hay) router.replace(RUTA_POR_ROL[rol]);
+      else signOut(auth);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [cargandoSesion, enviando, usuario, rol, router]);
 
   async function handleSubmit(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -60,7 +68,15 @@ export default function LoginPage() {
       const resultadoToken = await credencial.user.getIdTokenResult();
       const rolUsuario = resultadoToken.claims.rol as RolUsuario | undefined;
 
-      router.replace(rolUsuario ? RUTA_POR_ROL[rolUsuario] : "/");
+      // Sin la cookie del servidor no se puede entrar a la intranet.
+      const sesion = await iniciarSesionServidorAction(resultadoToken.token);
+      if (!rolUsuario || !sesion.ok) {
+        await signOut(auth);
+        throw new Error("Sin sesión en el servidor");
+      }
+
+      const siguiente = new URLSearchParams(window.location.search).get("siguiente");
+      router.replace(destinoTrasLogin(rolUsuario, siguiente));
     } catch {
       // Mensaje genérico a propósito: no distinguir "RUT no existe" de
       // "contraseña incorrecta" para no dejar enumerar RUTs registrados.
@@ -93,7 +109,7 @@ export default function LoginPage() {
               autoComplete="username"
               maxLength={12}
               inputMode="text"
-              className={CLASE_INPUT}
+              className={CLASE_CAMPO_ACCESO}
             />
           </div>
         </div>
@@ -113,7 +129,7 @@ export default function LoginPage() {
               onChange={(evento) => setPassword(evento.target.value)}
               required
               autoComplete="current-password"
-              className={CLASE_INPUT}
+              className={CLASE_CAMPO_ACCESO}
             />
           </div>
         </div>

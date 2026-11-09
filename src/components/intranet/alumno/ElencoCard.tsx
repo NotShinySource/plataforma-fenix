@@ -1,13 +1,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { ConId, Elenco } from "@/types";
-
-const VARIANTES = [
-  { fondo: "bg-gradient-to-br from-primary/10 to-primary-light/10", borde: "border-primary/10" },
-  { fondo: "bg-gradient-to-br from-terracotta/10 to-orange-500/10", borde: "border-terracotta/10" },
-  { fondo: "bg-gradient-to-br from-indigo-500/10 to-blue-500/10", borde: "border-indigo-100" },
-  { fondo: "bg-gradient-to-br from-emerald-500/10 to-teal-500/10", borde: "border-emerald-100" },
-];
+import { VARIANTES_ELENCO } from "@/components/ui/estilos";
 
 interface ElencoCardProps {
   elenco: ConId<Elenco>;
@@ -16,7 +10,7 @@ interface ElencoCardProps {
 }
 
 export function ElencoCard({ elenco, indice, href }: ElencoCardProps) {
-  const variante = VARIANTES[indice % VARIANTES.length];
+  const variante = VARIANTES_ELENCO[indice % VARIANTES_ELENCO.length];
 
   return (
     <Link

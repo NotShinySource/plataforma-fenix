@@ -8,7 +8,7 @@ import { plantillaEnlaceAcceso, type MotivoEnlace } from "@/lib/correo/plantilla
 import { identificadorDesdeRut } from "@/lib/seguridad/cifrado";
 import { descifrarDatosPrivados } from "@/lib/seguridad/datos-privados";
 
-export const MAXIMO_SOLICITUDES_POR_HORA = 5;
+const MAXIMO_SOLICITUDES_POR_HORA = 5;
 const UNA_HORA_MS = 60 * 60 * 1000;
 
 /**
@@ -16,7 +16,7 @@ const UNA_HORA_MS = 60 * 60 * 1000;
  * si todavía está permitida. En transacción, para que dos solicitudes
  * simultáneas no se salten el límite. Usa el reloj del servidor.
  */
-export async function registrarSolicitudSiPermitida(uid: string): Promise<boolean> {
+async function registrarSolicitudSiPermitida(uid: string): Promise<boolean> {
   const ref = dbAdmin.collection("solicitudes_acceso").doc(uid);
 
   return dbAdmin.runTransaction(async (transaccion) => {

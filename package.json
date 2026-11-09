@@ -10,24 +10,27 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --project unidad",
+    "test:reglas": "firebase emulators:exec --only firestore,storage --project demo-fenix \"vitest run --project reglas\"",
     "seed": "tsx scripts/seed-test-users.ts",
     "seed:admin": "tsx scripts/seed-admin-user.ts",
     "seed:tareas": "tsx scripts/seed-tareas.ts"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
-    "firebase": "^12.15.0",
-    "firebase-admin": "^14.1.0",
+    "firebase": "^12.19.0",
+    "firebase-admin": "^14.5.0",
     "lucide-react": "^1.23.0",
     "motion": "^12.42.2",
-    "next": "16.2.10",
-    "nodemailer": "^10.0.14",
+    "next": "16.4.3",
+    "nodemailer": "^10.3.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "server-only": "^0.0.1",
-    "tsc": "^2.0.4"
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.2",
@@ -35,9 +38,10 @@
     "@types/react-dom": "^19",
     "dotenv": "^17.4.2",
     "eslint": "^9",
-    "eslint-config-next": "16.2.10",
+    "eslint-config-next": "16.4.3",
     "tailwindcss": "^4",
     "tsx": "^4.23.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.12"
   }
 }

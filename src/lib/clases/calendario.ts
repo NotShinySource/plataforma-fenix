@@ -8,7 +8,7 @@
  */
 import type { Clase, ConId, Semestre, SesionClase } from "@/types";
 
-export const ZONA_HORARIA = "America/Santiago";
+const ZONA_HORARIA = "America/Santiago";
 
 const FORMATO_FECHA = /^\d{4}-\d{2}-\d{2}$/;
 const FORMATO_HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -73,7 +73,7 @@ export function idSemestre(anio: number, numero: 1 | 2): string {
 }
 
 /** Última fecha en que puede ocurrir la clase, o null si su semestre ya no existe. */
-export function fechaFinClase(clase: Clase, semestres: Record<string, Semestre>): string | null {
+function fechaFinClase(clase: Clase, semestres: Record<string, Semestre>): string | null {
   if (clase.repeticion.tipo === "unica") return clase.fechaInicio;
   return semestres[clase.repeticion.semestreId]?.fechaFin ?? null;
 }

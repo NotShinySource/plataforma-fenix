@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { formatearDuracion, formatearFechaLegible } from "@/lib/clases/calendario";
 import { suscribirSesion } from "@/services/clases.service";
 import { esMiembroDeElenco, listarMiembrosDeElenco, obtenerElenco } from "@/services/elencos.service";
-import { listarAsistenciasPorSesion } from "@/services/asistencias.service";
+import { listarAsistenciasPorSesion, listarObservacionesPorSesion } from "@/services/asistencias.service";
 import { obtenerUsuario } from "@/services/usuarios.service";
 import {
   ESTILO_ESTADO_SESION,
@@ -21,6 +21,7 @@ import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import { Modal } from "@/components/ui/Modal";
 import { guardarClaseAction } from "../actions";
 import type { ConId, SesionClase } from "@/types";
+import { CLASE_AREA_TEXTO } from "@/components/ui/estilos";
 
 type EstadoMarcado = "presente" | "ausente" | null;
 
@@ -81,10 +82,11 @@ export default function ClaseEnCursoPage() {
         setAcceso(esMiembro);
         if (!esMiembro) return;
 
-        const [elenco, membresias, registros] = await Promise.all([
+        const [elenco, membresias, registros, observaciones] = await Promise.all([
           obtenerElenco(elencoId!),
           listarMiembrosDeElenco(elencoId!, "alumno"),
-          listarAsistenciasPorSesion(sesionId),
+          listarAsistenciasPorSesion(elencoId!, sesionId),
+          listarObservacionesPorSesion(elencoId!, sesionId),
         ]);
         const porAlumno = new Map(registros.map((registro) => [registro.alumnoId, registro]));
 
@@ -97,7 +99,7 @@ export default function ClaseEnCursoPage() {
               nombre: alumno ? `${alumno.nombres} ${alumno.apellidos}` : "Alumno",
               estado:
                 registro?.estado === "presente" || registro?.estado === "ausente" ? registro.estado : null,
-              observaciones: registro?.observaciones ?? "",
+              observaciones: observaciones[membresia.usuarioId] ?? "",
             };
           })
         );
@@ -391,7 +393,7 @@ export default function ClaseEnCursoPage() {
           onChange={(evento) => setResumen(evento.target.value)}
           disabled={!enCurso}
           placeholder="Ej: Repaso de escalas, lectura de los compases 1 al 32 de la obra nueva y ensamble por secciones."
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark placeholder:text-slate-500 resize-none disabled:opacity-80"
+          className={CLASE_AREA_TEXTO}
         />
         <p className="text-xs font-semibold text-slate-600">
           Esto es lo que aparece en el informe que se envía a la Corporación.
@@ -449,7 +451,7 @@ export default function ClaseEnCursoPage() {
               onChange={(evento) => setTextoObservacion(evento.target.value)}
               disabled={!enCurso}
               placeholder="Describe el incidente, la falta o lo que haya que informar."
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary text-sm font-medium text-text-dark placeholder:text-slate-500 resize-none"
+              className={CLASE_AREA_TEXTO}
             />
             <p className="text-xs font-semibold text-slate-600">
               Solo la ven los docentes y la administración; el alumno no la ve. Se guarda al
@@ -497,7 +499,7 @@ export default function ClaseEnCursoPage() {
               value={motivo}
               onChange={(evento) => setMotivo(evento.target.value)}
               placeholder="Ej: Suspensión por corte de luz en la sede."
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary text-sm font-medium text-text-dark placeholder:text-slate-500 resize-none"
+              className={CLASE_AREA_TEXTO}
             />
             {mensaje?.tipo === "error" && (
               <p role="alert" className="text-sm font-semibold text-red-600">{mensaje.texto}</p>

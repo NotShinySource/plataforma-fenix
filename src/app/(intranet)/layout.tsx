@@ -3,26 +3,13 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import type { RolUsuario } from "@/types";
-
-const RUTA_POR_ROL: Record<RolUsuario, string> = {
-  alumno: "/alumno",
-  profesor: "/profesor",
-  administrador: "/admin",
-};
-
-function rolRequeridoParaRuta(pathname: string): RolUsuario | null {
-  if (pathname.startsWith("/alumno")) return "alumno";
-  if (pathname.startsWith("/profesor")) return "profesor";
-  if (pathname.startsWith("/admin")) return "administrador";
-  return null;
-}
+import { rolRequeridoParaRuta, RUTA_POR_ROL } from "@/lib/auth/rutas";
 
 /**
- * Protección de rutas del lado del cliente (provisional): la verificación
- * real con cookie de sesión en proxy.ts queda pendiente antes del despliegue
- * final — sin ella, esta protección
- * solo evita que la UI se muestre, no impide pedir el HTML de la ruta.
+ * Segunda capa, del lado del cliente: proxy.ts ya impide en el servidor que
+ * se responda una ruta sin cookie de sesión o con otro rol. Esto cubre el
+ * caso en que la sesión de Firebase en el navegador se cerró o cambió
+ * mientras la cookie seguía vigente, y evita mostrar la interfaz sin datos.
  */
 export default function IntranetLayout({
   children,

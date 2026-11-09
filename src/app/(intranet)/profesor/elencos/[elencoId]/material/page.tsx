@@ -12,6 +12,13 @@ import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import type { Archivo, ConId, Elenco, TipoArchivo } from "@/types";
+import { CLASE_CAMPO, CLASE_ERROR } from "@/components/ui/estilos";
+import {
+  ACCEPT_MATERIAL,
+  LONGITUD_MAXIMA_CATEGORIA_MATERIAL,
+  LONGITUD_MAXIMA_TITULO_MATERIAL,
+  validarArchivoMaterial,
+} from "@/lib/validacion";
 
 export default function ProfesorMaterialPage() {
   const { elencoId } = useParams<{ elencoId: string }>();
@@ -71,6 +78,12 @@ export default function ProfesorMaterialPage() {
   async function handleSubmit(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     if (!usuario || !archivoSeleccionado) return;
+
+    const problema = validarArchivoMaterial(archivoSeleccionado, tipo);
+    if (problema) {
+      setErrorSubida(problema);
+      return;
+    }
 
     setSubiendo(true);
     setErrorSubida(null);
@@ -149,40 +162,45 @@ export default function ProfesorMaterialPage() {
         <h3 className="text-lg font-extrabold text-text-dark">Subir nuevo material</h3>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
-            <label className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            <label htmlFor="titulo" className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               Título
             </label>
             <input
+              id="titulo"
               type="text"
               required
+              maxLength={LONGITUD_MAXIMA_TITULO_MATERIAL}
               value={titulo}
               onChange={(evento) => setTitulo(evento.target.value)}
               placeholder="Ej: Score General - Sinfonía del Desierto"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark placeholder:text-slate-500"
+              className={CLASE_CAMPO}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            <label htmlFor="categoria" className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               Categoría
             </label>
             <input
+              id="categoria"
               type="text"
+              maxLength={LONGITUD_MAXIMA_CATEGORIA_MATERIAL}
               value={categoria}
               onChange={(evento) => setCategoria(evento.target.value)}
               placeholder="Ej: Partitura"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark placeholder:text-slate-500"
+              className={CLASE_CAMPO}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            <label htmlFor="tipo" className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               Tipo
             </label>
             <select
+              id="tipo"
               value={tipo}
               onChange={(evento) => setTipo(evento.target.value as TipoArchivo)}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all text-sm font-medium text-text-dark placeholder:text-slate-500"
+              className={CLASE_CAMPO}
             >
               <option value="pdf">PDF</option>
               <option value="mp3">MP3</option>
@@ -191,14 +209,18 @@ export default function ProfesorMaterialPage() {
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Archivo
+            <label htmlFor="archivo" className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Archivo{" "}
+              <span className="normal-case font-semibold text-slate-600">
+                (PDF hasta 25 MB · MP3 o WAV hasta 50 MB)
+              </span>
             </label>
             <input
+              id="archivo"
               key={inputFileKey}
               type="file"
               required
-              accept={tipo === "pdf" ? "application/pdf" : "audio/*"}
+              accept={ACCEPT_MATERIAL[tipo]}
               onChange={(evento) => setArchivoSeleccionado(evento.target.files?.[0] ?? null)}
               className="w-full text-sm font-medium text-slate-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
             />
@@ -206,7 +228,7 @@ export default function ProfesorMaterialPage() {
 
           {errorSubida && (
             <div className="sm:col-span-2">
-              <p className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+              <p role="alert" className={CLASE_ERROR}>
                 {errorSubida}
               </p>
             </div>

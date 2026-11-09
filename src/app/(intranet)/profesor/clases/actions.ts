@@ -4,7 +4,7 @@ import { FieldValue, type Timestamp, type WithFieldValue } from "firebase-admin/
 import { dbAdmin } from "@/lib/firebase/admin";
 import { esProfesorDelElenco, verificarUsuario } from "@/lib/auth/verificar-usuario";
 import { fechasProgramadas, hoyEnChile, idSesion } from "@/lib/clases/calendario";
-import type { Asistencia, Clase, Semestre, SesionClase } from "@/types";
+import type { Asistencia, Clase, ObservacionAsistencia, Semestre, SesionClase } from "@/types";
 
 const LONGITUD_MAXIMA_RESUMEN = 2000;
 const LONGITUD_MAXIMA_OBSERVACION = 500;
@@ -207,7 +207,7 @@ export async function guardarClaseAction(input: GuardarClaseInput): Promise<Guar
 
     for (const registro of input.registros) {
       if (registro.estado === null) continue;
-      const observaciones = registro.observaciones.trim();
+      const idAsistencia = `${input.sesionId}_${registro.alumnoId}`;
       const asistencia: WithFieldValue<Asistencia> = {
         elencoId: sesion.elencoId,
         alumnoId: registro.alumnoId,
@@ -216,12 +216,25 @@ export async function guardarClaseAction(input: GuardarClaseInput): Promise<Guar
         estado: registro.estado,
         sesionId: input.sesionId,
         fechaRegistro: FieldValue.serverTimestamp(),
-        ...(observaciones ? { observaciones } : {}),
       };
-      batch.set(
-        dbAdmin.collection("asistencias").doc(`${input.sesionId}_${registro.alumnoId}`),
-        asistencia
-      );
+      batch.set(dbAdmin.collection("asistencias").doc(idAsistencia), asistencia);
+
+      // La observación va aparte: el alumno puede leer su asistencia, pero no esto.
+      const referenciaObservacion = dbAdmin.collection("observaciones_asistencia").doc(idAsistencia);
+      const texto = registro.observaciones.trim();
+      if (texto) {
+        const observacion: WithFieldValue<ObservacionAsistencia> = {
+          elencoId: sesion.elencoId,
+          sesionId: input.sesionId,
+          alumnoId: registro.alumnoId,
+          profesorId: verificacion.uid,
+          texto,
+          fechaRegistro: FieldValue.serverTimestamp(),
+        };
+        batch.set(referenciaObservacion, observacion);
+      } else {
+        batch.delete(referenciaObservacion);
+      }
     }
 
     batch.update(referenciaSesion, {
