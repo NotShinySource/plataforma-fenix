@@ -18,7 +18,10 @@ interface AsistenciaPorElenco {
 
 export default function AlumnoAsistenciaPage() {
   const { usuario } = useAuth();
-  const { elencos, cargando: cargandoElencos, error: errorElencos } = useElencos();
+  // Los grupos archivados también: su asistencia es parte del historial del alumno.
+  const { elencos, cargando: cargandoElencos, error: errorElencos } = useElencos({
+    incluirArchivados: true,
+  });
   const [datos, setDatos] = useState<AsistenciaPorElenco[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -43,6 +43,13 @@ service firebase.storage {
         && firestore.get(rutaMembresia(elencoId)).data.rolEnElenco == 'profesor';
     }
 
+    // En un grupo archivado no se suben archivos nuevos (su historial se
+    // conserva). Los grupos antiguos sin el campo cuentan como activos.
+    function grupoActivo(elencoId) {
+      let ruta = /databases/(default)/documents/elencos/$(elencoId);
+      return firestore.exists(ruta) && firestore.get(ruta).data.get('activo', true) == true;
+    }
+
     function megabytes(cantidad) {
       return cantidad * 1024 * 1024;
     }
@@ -76,6 +83,7 @@ service firebase.storage {
       // que no haya un objeto previo (resource == null).
       allow create: if resource == null
         && esProfesorDelElenco(elencoId)
+        && grupoActivo(elencoId)
         && formatoPermitido(carpeta);
       allow delete: if esProfesorDelElenco(elencoId);
       allow update: if false;

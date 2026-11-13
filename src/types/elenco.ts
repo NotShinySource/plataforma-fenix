@@ -7,57 +7,67 @@
  */
 export const DISCIPLINA_ELENCO = "musica" as const;
 
-export const TIPOS_ELENCO = [
-  "Folklore",
-  "Banda",
-  "Orquesta de Cuerdas",
-  "Coro Adultos",
-  "Coro Juvenil",
-  "Coro de Niños",
-] as const;
-
-export type TipoElenco = (typeof TIPOS_ELENCO)[number];
+/** Niveles que se proponen al crear una escuela; se pueden quitar o reemplazar. */
+export const NIVELES_PREDETERMINADOS = ["Inicial", "Intermedio", "Avanzado"] as const;
 
 /**
- * Un grupo puede ser un elenco (conjunto musical) o una clase de instrumento
- * que no pertenece a ningún elenco (por ejemplo, solo piano). Ambos usan la
- * misma colección y funcionan igual: miembros, material, asistencia,
- * horario, tareas y avisos.
+ * "conjunto": coro, banda, orquesta... "instrumento": clases de un solo
+ * instrumento (piano, guitarra...), que no pertenecen a un conjunto.
  */
-export const CATEGORIAS_ELENCO = ["elenco", "instrumento"] as const;
+export type TipoEscuela = "conjunto" | "instrumento";
 
-export type CategoriaElenco = (typeof CATEGORIAS_ELENCO)[number];
+/**
+ * Colección raíz `escuelas`: las escuelas de la institución y sus niveles.
+ * Los niveles se definen al crearla y después no cambian, para que los
+ * nombres de sus elencos sigan siendo válidos. El nombre sí se puede
+ * corregir: el servidor actualiza el nombre de todos sus elencos.
+ */
+export interface Escuela {
+  nombre: string;
+  tipo: TipoEscuela;
+  niveles: string[];
+  /** `false` = archivada: no se pueden crear elencos nuevos en ella. */
+  activo: boolean;
+  /** Se escribe con FieldValue.serverTimestamp(), nunca con Date del cliente. */
+  fechaCreacion: Date;
+}
 
-export const INSTRUMENTOS = [
-  "Piano",
-  "Guitarra",
-  "Violín",
-  "Viola",
-  "Violonchelo",
-  "Contrabajo",
-  "Flauta traversa",
-  "Clarinete",
-  "Saxofón",
-  "Trompeta",
-  "Trombón",
-  "Percusión",
-  "Canto",
-] as const;
+/**
+ * "escuela": grupo estable de una escuela y un nivel (su nombre se arma con
+ * ellos). "itinerancia": grupo temporal con nombre libre (por ejemplo, el
+ * elenco de un musical), cuyos miembros pueden venir de varios elencos.
+ */
+export type TipoGrupo = "escuela" | "itinerancia";
 
-export type Instrumento = (typeof INSTRUMENTOS)[number];
-
-/** aulas_virtuales queda fusionada aquí: era 1:1 sin identidad propia y separarla solo agregaba una lectura. */
+/**
+ * Colección raíz `elencos`: todo grupo con miembros, material, asistencia,
+ * horario, tareas y avisos (aulas_virtuales queda fusionada aquí: era 1:1
+ * sin identidad propia y separarla solo agregaba una lectura).
+ *
+ * `nombre` se guarda aunque en un grupo de escuela se arme solo, porque lo
+ * muestran muchas pantallas (horario, tareas, avisos, informe) sin tener que
+ * leer la escuela.
+ */
 export interface Elenco {
   nombre: string;
   disciplina: typeof DISCIPLINA_ELENCO;
-  /** Los grupos creados antes de existir las clases de instrumento se leen como "elenco". */
-  categoria: CategoriaElenco;
-  /** Solo cuando categoria === "elenco". */
-  tipoElenco?: TipoElenco;
-  /** Solo cuando categoria === "instrumento". */
-  instrumento?: Instrumento;
+  tipoGrupo: TipoGrupo;
+  /** Solo en grupos de escuela. */
+  escuelaId?: string;
+  nivel?: string;
+  /** Distingue dos grupos de la misma escuela y nivel (por ejemplo, "Grupo A"). */
+  complemento?: string;
+  /** Copia del tipo de la escuela, para la etiqueta de las tarjetas. */
+  tipoEscuela?: TipoEscuela;
+  /** Solo en itinerancias, ambas opcionales (`YYYY-MM-DD`). */
+  fechaInicio?: string;
+  fechaTermino?: string;
   descripcion: string;
   docenteResponsableId: string;
+  /**
+   * `false` = archivado: deja de aparecer en los paneles y no admite clases,
+   * material, avisos ni tareas nuevos, pero conserva todo su historial.
+   */
   activo: boolean;
   /** Se escribe con serverTimestamp()/FieldValue.serverTimestamp(), nunca con Date del cliente: la fecha la fija el servidor. */
   fechaCreacion: Date;

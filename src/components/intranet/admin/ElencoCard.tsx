@@ -1,6 +1,6 @@
-import { etiquetaTipoGrupo } from "@/lib/elencos";
 import Link from "next/link";
-import { ChevronRight, Users } from "lucide-react";
+import { CalendarRange, ChevronRight, Users } from "lucide-react";
+import { etiquetaTipoGrupo, textoPeriodoItinerancia } from "@/lib/elencos";
 import type { ConId, Elenco } from "@/types";
 import { VARIANTES_ELENCO } from "@/components/ui/estilos";
 
@@ -11,7 +11,10 @@ interface ElencoCardProps {
 }
 
 export function ElencoCard({ elenco, cantidadMiembros, indice }: ElencoCardProps) {
-  const variante = VARIANTES_ELENCO[indice % VARIANTES_ELENCO.length];
+  const variante = elenco.activo
+    ? VARIANTES_ELENCO[indice % VARIANTES_ELENCO.length]
+    : { fondo: "bg-slate-50", borde: "border-slate-200" };
+  const periodo = textoPeriodoItinerancia(elenco);
 
   return (
     <Link
@@ -19,10 +22,23 @@ export function ElencoCard({ elenco, cantidadMiembros, indice }: ElencoCardProps
       className={`${variante.fondo} ${variante.borde} border rounded-3xl p-6 flex flex-col justify-between gap-6 min-h-[190px] hover:shadow-lg hover:-translate-y-0.5 transition-all group`}
     >
       <div className="space-y-3">
-        <span className="bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-text-dark uppercase tracking-wider border border-slate-100 shadow-sm inline-block">
-          {etiquetaTipoGrupo(elenco)}
-        </span>
-        <h3 className="font-extrabold text-xl text-text-dark">{elenco.nombre}</h3>
+        <div className="flex flex-wrap gap-2">
+          <span className="bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-text-dark uppercase tracking-wider border border-slate-100 shadow-sm inline-block">
+            {etiquetaTipoGrupo(elenco)}
+          </span>
+          {!elenco.activo && (
+            <span className="bg-slate-200 px-3 py-1 rounded-full text-[10px] font-bold text-slate-700 uppercase tracking-wider inline-block">
+              Archivado
+            </span>
+          )}
+        </div>
+        <h3 className="font-extrabold text-xl text-text-dark break-words">{elenco.nombre}</h3>
+        {periodo && (
+          <p className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+            <CalendarRange className="w-3.5 h-3.5" />
+            {periodo}
+          </p>
+        )}
         {elenco.descripcion && (
           <p className="text-slate-600 text-sm leading-relaxed font-medium line-clamp-2">
             {elenco.descripcion}

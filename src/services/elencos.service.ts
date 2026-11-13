@@ -20,12 +20,18 @@ function mapElenco(id: string, data: DocumentData): ConId<Elenco> {
     id,
     nombre: data.nombre,
     disciplina: data.disciplina,
-    categoria: data.categoria === "instrumento" ? "instrumento" : "elenco",
-    tipoElenco: data.tipoElenco,
-    instrumento: data.instrumento,
-    descripcion: data.descripcion,
+    // Los grupos creados antes de existir las escuelas no tienen tipo: se
+    // muestran como grupos de escuela, con el nombre que tengan guardado.
+    tipoGrupo: data.tipoGrupo === "itinerancia" ? "itinerancia" : "escuela",
+    escuelaId: data.escuelaId,
+    nivel: data.nivel,
+    complemento: data.complemento,
+    tipoEscuela: data.tipoEscuela,
+    fechaInicio: data.fechaInicio,
+    fechaTermino: data.fechaTermino,
+    descripcion: data.descripcion ?? "",
     docenteResponsableId: data.docenteResponsableId,
-    activo: data.activo,
+    activo: data.activo !== false,
     fechaCreacion: timestampADate(data.fechaCreacion),
   };
 }
@@ -77,8 +83,15 @@ export async function esMiembroDeElenco(elencoId: string, usuarioId: string): Pr
   return snap.exists() && snap.data().activo === true;
 }
 
-/** Elencos de los que el usuario es miembro (alumno o profesor), vía miembros_elenco. */
-export async function listarElencosPorUsuario(usuarioId: string): Promise<ConId<Elenco>[]> {
+/**
+ * Elencos de los que el usuario es miembro (alumno o profesor), vía
+ * miembros_elenco. Los archivados se omiten salvo que se pidan: solo los
+ * necesita el historial de asistencia.
+ */
+export async function listarElencosPorUsuario(
+  usuarioId: string,
+  incluirArchivados = false
+): Promise<ConId<Elenco>[]> {
   const membresiasSnap = await getDocs(
     query(
       collection(db, COLECCION_MIEMBROS),
@@ -93,7 +106,9 @@ export async function listarElencosPorUsuario(usuarioId: string): Promise<ConId<
     )
   );
 
-  return elencos.filter((elenco): elenco is ConId<Elenco> => elenco !== null);
+  return elencos.filter(
+    (elenco): elenco is ConId<Elenco> => elenco !== null && (incluirArchivados || elenco.activo)
+  );
 }
 
 /** Miembros de un elenco, opcionalmente filtrados por rol (p. ej. solo alumnos para tomar asistencia). */

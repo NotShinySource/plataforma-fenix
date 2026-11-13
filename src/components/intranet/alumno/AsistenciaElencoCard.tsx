@@ -49,6 +49,7 @@ export function AsistenciaElencoCard({ elenco, asistencias }: AsistenciaElencoCa
         <div>
           <span className="text-terracotta text-xs font-bold uppercase tracking-widest">
             {etiquetaTipoGrupo(elenco)}
+            {!elenco.activo && " · Archivado"}
           </span>
           <h3 className="text-xl font-extrabold text-text-dark mt-1">{elenco.nombre}</h3>
           <p className="text-xs text-slate-600 font-semibold mt-1">

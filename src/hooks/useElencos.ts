@@ -11,8 +11,11 @@ interface UseElencosResultado {
   error: string | null;
 }
 
-/** Elencos del usuario autenticado (alumno o profesor), vía miembros_elenco. */
-export function useElencos(): UseElencosResultado {
+/**
+ * Elencos del usuario autenticado (alumno o profesor), vía miembros_elenco.
+ * Sin los archivados, salvo que se pidan (historial de asistencia).
+ */
+export function useElencos({ incluirArchivados = false } = {}): UseElencosResultado {
   const { usuario } = useAuth();
   const [elencos, setElencos] = useState<ConId<Elenco>[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -23,7 +26,7 @@ export function useElencos(): UseElencosResultado {
 
     let cancelado = false;
 
-    listarElencosPorUsuario(usuario.uid)
+    listarElencosPorUsuario(usuario.uid, incluirArchivados)
       .then((resultado) => {
         if (cancelado) return;
         setElencos(resultado);
@@ -39,7 +42,7 @@ export function useElencos(): UseElencosResultado {
     return () => {
       cancelado = true;
     };
-  }, [usuario]);
+  }, [usuario, incluirArchivados]);
 
   if (!usuario) {
     return { elencos: [], cargando: false, error: null };

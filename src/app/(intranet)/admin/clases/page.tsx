@@ -14,6 +14,7 @@ import {
 } from "@/lib/clases/calendario";
 import { listarClases, listarSemestres, listarSesionesEnRango } from "@/services/clases.service";
 import { listarElencos } from "@/services/elencos.service";
+import { limitesDeGrupo } from "@/lib/elencos";
 import { CalendarioMensual } from "@/components/intranet/admin/clases/CalendarioMensual";
 import { DetalleOcurrencia } from "@/components/intranet/admin/clases/DetalleOcurrencia";
 import {
@@ -85,7 +86,16 @@ export default function AdminClasesPage() {
 
   const ocurrencias = useMemo(
     () =>
-      datos ? construirOcurrencias(datos.clases, datos.sesiones, datos.semestres, desde, hasta) : [],
+      datos
+        ? construirOcurrencias(
+            datos.clases,
+            datos.sesiones,
+            datos.semestres,
+            desde,
+            hasta,
+            Object.fromEntries(datos.elencos.map((elenco) => [elenco.id, limitesDeGrupo(elenco)]))
+          )
+        : [],
     [datos, desde, hasta]
   );
 

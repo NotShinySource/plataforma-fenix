@@ -6,6 +6,7 @@
  * días se hace en UTC a propósito: así un cambio de horario de verano nunca
  * corre una fecha un día.
  */
+import type { LimitesGrupo } from "@/lib/elencos";
 import type { Clase, ConId, Semestre, SesionClase } from "@/types";
 
 const ZONA_HORARIA = "America/Santiago";
@@ -78,16 +79,24 @@ function fechaFinClase(clase: Clase, semestres: Record<string, Semestre>): strin
   return semestres[clase.repeticion.semestreId]?.fechaFin ?? null;
 }
 
-/** Fechas programadas de una clase dentro de [desde, hasta], ambos inclusive. */
+/**
+ * Fechas programadas de una clase dentro de [desde, hasta], ambos inclusive.
+ * `limites` es el período en que el grupo admite clases: ninguna si está
+ * archivado, y solo entre sus fechas si es una itinerancia que las tiene.
+ */
 export function fechasProgramadas(
   clase: Clase,
   semestres: Record<string, Semestre>,
   desde: string,
-  hasta: string
+  hasta: string,
+  limites?: LimitesGrupo
 ): string[] {
+  if (limites?.archivado) return [];
   const fin = fechaFinClase(clase, semestres);
   if (!fin) return [];
 
+  if (limites?.desde && limites.desde > desde) desde = limites.desde;
+  if (limites?.hasta && limites.hasta < hasta) hasta = limites.hasta;
   const limite = fin < hasta ? fin : hasta;
   const fechas: string[] = [];
 
@@ -129,20 +138,26 @@ export interface Ocurrencia {
  * Combina las series con los documentos de sesión para obtener las
  * ocurrencias cuya fecha efectiva cae en [desde, hasta]. Una sesión que se
  * movió de día aparece en su fecha nueva y no en la original.
+ *
+ * `limitesPorElenco` recorta las ocurrencias programadas de cada grupo
+ * (archivado o itinerancia con fechas). Las sesiones que ya existen se
+ * muestran igual: son registro de lo que pasó.
  */
 export function construirOcurrencias(
   clases: ConId<Clase>[],
   sesiones: ConId<SesionClase>[],
   semestres: Record<string, Semestre>,
   desde: string,
-  hasta: string
+  hasta: string,
+  limitesPorElenco: Record<string, LimitesGrupo> = {}
 ): Ocurrencia[] {
   const sesionesPorId = new Map(sesiones.map((sesion) => [sesion.id, sesion]));
   const clasesPorId = new Map(clases.map((clase) => [clase.id, clase]));
   const resultado = new Map<string, Ocurrencia>();
 
   for (const clase of clases) {
-    for (const fechaProgramada of fechasProgramadas(clase, semestres, desde, hasta)) {
+    const limites = limitesPorElenco[clase.elencoId];
+    for (const fechaProgramada of fechasProgramadas(clase, semestres, desde, hasta, limites)) {
       const id = idSesion(clase.id, fechaProgramada);
       if (sesionesPorId.has(id)) continue; // la sesión manda; se agrega abajo
       resultado.set(id, {

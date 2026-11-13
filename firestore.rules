@@ -60,6 +60,18 @@ service cloud.firestore {
         && membresia(elencoId).data.rolEnElenco == 'alumno';
     }
 
+    // Un grupo archivado (activo == false) conserva su historial, pero no
+    // admite material, avisos ni tareas nuevos. Los grupos antiguos sin el
+    // campo cuentan como activos.
+    function grupoActivo(elencoId) {
+      let ruta = /databases/$(database)/documents/elencos/$(elencoId);
+      return exists(ruta) && get(ruta).data.get('activo', true) == true;
+    }
+
+    function puedePublicarEn(elencoId) {
+      return esProfesorDelElenco(elencoId) && grupoActivo(elencoId);
+    }
+
     // Otra persona (no quien hace la solicitud) es alumno activo del elenco.
     function esAlumnoActivoDe(elencoId, usuarioId) {
       let ruta = /databases/$(database)/documents/miembros_elenco/$(elencoId + '_' + usuarioId);
@@ -104,6 +116,13 @@ service cloud.firestore {
     // (la lista del curso); la Dirección ve todas. El ID termina en el uid
     // del miembro, así que consultar "¿soy miembro de este elenco?" se
     // responde aunque el documento no exista (no existe = no es miembro).
+    // Nombres, tipo y niveles de las escuelas: no hay datos personales. Las
+    // escribe solo el servidor.
+    match /escuelas/{escuelaId} {
+      allow read: if autenticado();
+      allow write: if false;
+    }
+
     match /miembros_elenco/{membresiaId} {
       allow get: if autenticado() && membresiaId.matches('.+_' + request.auth.uid);
       allow read: if esAdmin()
@@ -117,7 +136,7 @@ service cloud.firestore {
     match /archivos/{archivoId} {
       allow read: if esAdmin() || esMiembro(resource.data.elencoId);
 
-      allow create: if esProfesorDelElenco(request.resource.data.elencoId)
+      allow create: if puedePublicarEn(request.resource.data.elencoId)
         && request.resource.data.profesorId == request.auth.uid
         && request.resource.data.keys().hasOnly([
           'elencoId', 'profesorId', 'tipo', 'categoria', 'titulo',
@@ -160,7 +179,7 @@ service cloud.firestore {
     match /avisos/{avisoId} {
       allow read: if esAdmin() || esMiembro(resource.data.elencoId);
 
-      allow create: if esProfesorDelElenco(request.resource.data.elencoId)
+      allow create: if puedePublicarEn(request.resource.data.elencoId)
         && request.resource.data.profesorId == request.auth.uid
         && request.resource.data.keys().hasOnly([
           'elencoId', 'profesorId', 'titulo', 'contenido', 'urgente', 'fechaPublicacion'])
@@ -223,7 +242,7 @@ service cloud.firestore {
         || esProfesorDelElenco(resource.data.elencoId)
         || esParaEsteAlumno();
 
-      allow create: if esProfesorDelElenco(request.resource.data.elencoId)
+      allow create: if puedePublicarEn(request.resource.data.elencoId)
         && request.resource.data.profesorId == request.auth.uid
         && request.resource.data.keys().hasOnly([
           'titulo', 'elencoId', 'profesorId', 'alumnoId', 'fechaLimite', 'tipoAdjunto',

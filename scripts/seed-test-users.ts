@@ -2,8 +2,8 @@
  * Seed de datos de prueba para desarrollo local contra el EMULADOR de Firebase.
  * Crea un usuario alumno y un usuario profesor (cuenta de Auth con el
  * identificador derivado del RUT + custom claim de rol + usuarios/{uid} +
- * datos_privados/{uid} cifrado), un elenco de prueba y las membresías en
- * miembros_elenco que conectan a ambos con ese elenco.
+ * datos_privados/{uid} cifrado), una escuela de prueba con un elenco y las
+ * membresías en miembros_elenco que conectan a ambos con ese elenco.
  *
  * Las cuentas quedan "activadas" con contraseña conocida, para probar el
  * login sin pasar por el flujo de activación.
@@ -28,7 +28,7 @@ import {
 import { identificadorDesdeRut } from "../src/lib/seguridad/cifrado";
 import { cifrarDatosPrivados } from "../src/lib/seguridad/datos-privados";
 import type { DatosPrivados } from "../src/types/datos-privados";
-import type { Elenco, MiembroElenco, RolEnElenco } from "../src/types/elenco";
+import type { Elenco, Escuela, MiembroElenco, RolEnElenco } from "../src/types/elenco";
 import type { RolUsuario, Usuario } from "../src/types/usuario";
 
 if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR !== "true") {
@@ -59,6 +59,7 @@ const authAdmin = getAuth(app);
 const dbAdmin = getFirestore(app);
 
 const ELENCO_ID_PRUEBA = "elenco-seed-prueba";
+const ESCUELA_ID_PRUEBA = "escuela-seed-coro";
 
 interface DatosUsuarioPrueba extends DatosPrivados {
   nombres: string;
@@ -138,11 +139,22 @@ async function seedUsuario(
 }
 
 async function seedElenco(docenteResponsableId: string): Promise<string> {
+  const escuela: WithFieldValue<Escuela> = {
+    nombre: "Coro",
+    tipo: "conjunto",
+    niveles: ["Niños", "Jóvenes", "Adultos"],
+    activo: true,
+    fechaCreacion: FieldValue.serverTimestamp(),
+  };
+  await dbAdmin.collection("escuelas").doc(ESCUELA_ID_PRUEBA).set(escuela);
+
   const elenco: WithFieldValue<Elenco> = {
-    nombre: "Elenco de Prueba",
+    nombre: "Coro · Adultos",
     disciplina: "musica",
-    categoria: "elenco",
-    tipoElenco: "Coro Adultos",
+    tipoGrupo: "escuela",
+    escuelaId: ESCUELA_ID_PRUEBA,
+    nivel: "Adultos",
+    tipoEscuela: "conjunto",
     descripcion:
       "Elenco creado por scripts/seed-test-users.ts para pruebas locales.",
     docenteResponsableId,
