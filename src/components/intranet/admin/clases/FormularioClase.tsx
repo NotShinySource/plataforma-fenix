@@ -81,7 +81,7 @@ export function FormularioClase({
     if (!usuario) return;
 
     if (config.modo === "crear" && !elencoId) {
-      setError("Selecciona el elenco.");
+      setError("Selecciona el elenco o la clase.");
       return;
     }
 
@@ -135,7 +135,7 @@ export function FormularioClase({
         {config.modo === "crear" && (
           <div>
             <label htmlFor="clase-elenco" className="block text-sm font-bold text-slate-700 mb-1.5">
-              Elenco
+              Elenco o clase
             </label>
             <select
               id="clase-elenco"
@@ -145,12 +145,23 @@ export function FormularioClase({
               disabled={guardando}
               className={CLASE_CAMPO}
             >
-              <option value="">Selecciona un elenco</option>
-              {elencos.map((elenco) => (
-                <option key={elenco.id} value={elenco.id}>
-                  {elenco.nombre}
-                </option>
-              ))}
+              <option value="">Selecciona un elenco o clase</option>
+              {[
+                { etiqueta: "Elencos", categoria: "elenco" },
+                { etiqueta: "Clases de instrumento", categoria: "instrumento" },
+              ].map((grupo) => {
+                const opciones = elencos.filter((elenco) => elenco.categoria === grupo.categoria);
+                if (opciones.length === 0) return null;
+                return (
+                  <optgroup key={grupo.categoria} label={grupo.etiqueta}>
+                    {opciones.map((elenco) => (
+                      <option key={elenco.id} value={elenco.id}>
+                        {elenco.nombre}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
             </select>
           </div>
         )}

@@ -91,9 +91,9 @@ export default function AlumnoDashboardPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-extrabold text-text-dark">Mis Elencos Activos</h3>
+            <h3 className="text-lg font-extrabold text-text-dark">Mis elencos y clases</h3>
             <p className="text-xs text-slate-600 mt-0.5 font-semibold">
-              Selecciona un elenco para ver sus materiales autorizados
+              Selecciona uno para ver sus materiales
             </p>
           </div>
           {!cargando && !error && (
@@ -103,13 +103,13 @@ export default function AlumnoDashboardPage() {
           )}
         </div>
 
-        {cargando && <EstadoCargando texto="Cargando tus elencos..." />}
+        {cargando && <EstadoCargando texto="Cargando tus elencos y clases..." />}
         {error && <EstadoError mensaje={error} />}
         {!cargando && !error && elencos.length === 0 && (
           <EstadoVacio
             icono={Music}
-            titulo="Todavía no estás inscrito en ningún elenco"
-            descripcion="Cuando el Administrador te asigne a un elenco, aparecerá aquí."
+            titulo="Todavía no estás inscrito en ningún elenco ni clase"
+            descripcion="Cuando el Administrador te asigne a un elenco o clase, aparecerá aquí."
           />
         )}
         {!cargando && !error && elencos.length > 0 && (

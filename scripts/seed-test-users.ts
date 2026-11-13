@@ -141,6 +141,7 @@ async function seedElenco(docenteResponsableId: string): Promise<string> {
   const elenco: WithFieldValue<Elenco> = {
     nombre: "Elenco de Prueba",
     disciplina: "musica",
+    categoria: "elenco",
     tipoElenco: "Coro Adultos",
     descripcion:
       "Elenco creado por scripts/seed-test-users.ts para pruebas locales.",

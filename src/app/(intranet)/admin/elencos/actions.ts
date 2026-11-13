@@ -3,11 +3,13 @@
 import { FieldValue, type WithFieldValue } from "firebase-admin/firestore";
 import { dbAdmin } from "@/lib/firebase/admin";
 import { verificarAdmin } from "@/lib/auth/verificar-admin";
+import { validarTipoGrupo } from "@/lib/elencos";
 import {
   DISCIPLINA_ELENCO,
-  TIPOS_ELENCO,
   type CargoDocente,
+  type CategoriaElenco,
   type Elenco,
+  type Instrumento,
   type MiembroElenco,
   type RolEnElenco,
   type TipoElenco,
@@ -18,7 +20,11 @@ const LONGITUD_MAXIMA_DESCRIPCION = 500;
 
 export interface CrearElencoInput {
   nombre: string;
-  tipoElenco: TipoElenco;
+  categoria: CategoriaElenco;
+  /** Obligatorio cuando categoria === "elenco". */
+  tipoElenco?: TipoElenco;
+  /** Obligatorio cuando categoria === "instrumento". */
+  instrumento?: Instrumento;
   descripcion: string;
   idTokenAdmin: string;
 }
@@ -30,8 +36,8 @@ export interface CrearElencoResultado {
 }
 
 /**
- * Crea un elenco (panel de Admin). `disciplina` queda
- * fija en "musica" (único alcance real de la institución hoy, ver
+ * Crea un elenco o una clase de instrumento (panel de Admin). `disciplina`
+ * queda fija en "musica" (único alcance real de la institución hoy, ver
  * DISCIPLINA_ELENCO) — ya no se pide en el formulario. `docenteResponsableId`
  * queda "" hasta que se asigne un profesor con cargo "titular" desde
  * agregarMiembroAction, que lo completa automáticamente.
@@ -41,7 +47,6 @@ export async function crearElencoAction(
 ): Promise<CrearElencoResultado> {
   const nombre = input.nombre.trim();
   const descripcion = input.descripcion.trim();
-  const tipoElenco = input.tipoElenco;
 
   const verificacion = await verificarAdmin(input.idTokenAdmin);
   if (!verificacion.ok) {
@@ -49,7 +54,7 @@ export async function crearElencoAction(
   }
 
   if (!nombre) {
-    return { ok: false, error: "El nombre del elenco es obligatorio." };
+    return { ok: false, error: "El nombre es obligatorio." };
   }
   if (nombre.length > LONGITUD_MAXIMA_NOMBRE) {
     return {
@@ -57,8 +62,9 @@ export async function crearElencoAction(
       error: `El nombre no puede superar los ${LONGITUD_MAXIMA_NOMBRE} caracteres.`,
     };
   }
-  if (!TIPOS_ELENCO.includes(tipoElenco)) {
-    return { ok: false, error: "Tipo de elenco inválido." };
+  const tipoGrupo = validarTipoGrupo(input);
+  if (!tipoGrupo.ok) {
+    return { ok: false, error: tipoGrupo.error };
   }
   if (descripcion.length > LONGITUD_MAXIMA_DESCRIPCION) {
     return {
@@ -79,13 +85,13 @@ export async function crearElencoAction(
         String(elencoDoc.data().nombre ?? "").trim().toLowerCase() === nombreNormalizado
     );
     if (yaExiste) {
-      return { ok: false, error: "Ya existe un elenco con ese nombre." };
+      return { ok: false, error: "Ya existe un elenco o una clase con ese nombre." };
     }
 
     const elenco: WithFieldValue<Elenco> = {
       nombre,
       disciplina: DISCIPLINA_ELENCO,
-      tipoElenco,
+      ...tipoGrupo.datos,
       descripcion,
       docenteResponsableId: "",
       activo: true,
@@ -96,7 +102,7 @@ export async function crearElencoAction(
     return { ok: true, elencoId: elencoRef.id };
   } catch (error) {
     console.error("Error creando elenco desde Admin:", error);
-    return { ok: false, error: "No se pudo crear el elenco. Intenta de nuevo." };
+    return { ok: false, error: "No se pudo crear. Intenta de nuevo." };
   }
 }
 

@@ -128,7 +128,7 @@ export default function AdminDashboardPage() {
           />
           <TarjetaCifra
             icono={Music2}
-            etiqueta="Elencos"
+            etiqueta="Elencos y clases"
             valor={resumen?.elencos ?? null}
             estilo="bg-terracotta/10 text-terracotta"
             href="/admin/elencos"
@@ -231,9 +231,9 @@ export default function AdminDashboardPage() {
               <Music2 className="w-6 h-6" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="font-extrabold text-text-dark">Elencos</h3>
+              <h3 className="font-extrabold text-text-dark">Elencos y clases</h3>
               <p className="text-xs text-slate-600 font-semibold mt-0.5">
-                Crear elencos y asignar miembros
+                Crear elencos o clases de instrumento y asignar miembros
               </p>
             </div>
             <ChevronRight className="w-5 h-5 text-slate-400 group-hover:translate-x-1 transition-transform" />

@@ -1,5 +1,6 @@
 "use client";
 
+import { etiquetaTipoGrupo } from "@/lib/elencos";
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { formatearFechaSesion } from "@/lib/format";
@@ -47,7 +48,7 @@ export function AsistenciaElencoCard({ elenco, asistencias }: AsistenciaElencoCa
       <div className="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div>
           <span className="text-terracotta text-xs font-bold uppercase tracking-widest">
-            {elenco.tipoElenco}
+            {etiquetaTipoGrupo(elenco)}
           </span>
           <h3 className="text-xl font-extrabold text-text-dark mt-1">{elenco.nombre}</h3>
           <p className="text-xs text-slate-600 font-semibold mt-1">
