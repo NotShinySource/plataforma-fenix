@@ -7,7 +7,8 @@ import {
 
 /**
  * Escenario común de las pruebas de reglas:
- * - elenco e1: profesor "profe", alumno "alumno" y alumno "inactivo" (membresía desactivada);
+ * - elenco e1: profesor "profe", alumnos "alumno" y "companero", y alumno "inactivo"
+ *   (membresía desactivada);
  * - elenco e2: profesor "profe2";
  * - "ajeno": alumno sin elencos; "admin": la Dirección.
  */
@@ -16,6 +17,7 @@ export const USUARIOS = {
   profe: { uid: "profe", rol: "profesor" },
   profe2: { uid: "profe2", rol: "profesor" },
   alumno: { uid: "alumno", rol: "alumno" },
+  companero: { uid: "companero", rol: "alumno" },
   inactivo: { uid: "inactivo", rol: "alumno" },
   ajeno: { uid: "ajeno", rol: "alumno" },
 } as const;
@@ -53,6 +55,7 @@ export async function cargarEscenario(entorno: RulesTestEnvironment): Promise<vo
       ["elencos/e2", { nombre: "Banda", activo: true }],
       ["miembros_elenco/e1_profe", membresia("e1", "profe", "profesor")],
       ["miembros_elenco/e1_alumno", membresia("e1", "alumno", "alumno")],
+      ["miembros_elenco/e1_companero", membresia("e1", "companero", "alumno")],
       ["miembros_elenco/e1_inactivo", membresia("e1", "inactivo", "alumno", false)],
       ["miembros_elenco/e2_profe2", membresia("e2", "profe2", "profesor")],
       ["archivos/a1", { elencoId: "e1", profesorId: "profe", tipo: "pdf", titulo: "Partitura" }],
@@ -65,6 +68,19 @@ export async function cargarEscenario(entorno: RulesTestEnvironment): Promise<vo
           titulo: "Estudiar compás 12",
           elencoId: "e1",
           profesorId: "profe",
+          alumnoId: null,
+          tipoAdjunto: "Ninguno",
+          completadoPor: [],
+          completadoEn: {},
+        },
+      ],
+      [
+        "tareas/t2",
+        {
+          titulo: "Corregir la digitación del compás 4",
+          elencoId: "e1",
+          profesorId: "profe",
+          alumnoId: "alumno",
           tipoAdjunto: "Ninguno",
           completadoPor: [],
           completadoEn: {},

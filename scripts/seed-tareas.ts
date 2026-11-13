@@ -249,11 +249,15 @@ async function sembrar(): Promise<void> {
     // ver una barra de avance con datos. En el proyecto real no se inventa
     // que un alumno de verdad completó una tarea de prueba.
     const alumnoQueCumplio = usarEmulador && indice === 4 ? elenco.alumnos[0] : undefined;
+    // También solo en el emulador: una tarea dirigida a un único alumno, para
+    // probar que sus compañeros no la ven.
+    const destinatario = usarEmulador && indice === 1 ? (elenco.alumnos[0] ?? null) : null;
 
     const tarea: WithFieldValue<Tarea> = {
       titulo: plantilla.titulo,
       elencoId: elenco.elencoId,
       profesorId: elenco.profesorId,
+      alumnoId: destinatario,
       tipoAdjunto: plantilla.tipoAdjunto,
       completadoPor: alumnoQueCumplio ? [alumnoQueCumplio] : [],
       completadoEn: alumnoQueCumplio ? { [alumnoQueCumplio]: FieldValue.serverTimestamp() } : {},
@@ -266,7 +270,9 @@ async function sembrar(): Promise<void> {
     };
 
     await dbAdmin.collection(COLECCION).doc(tareaId).set(tarea);
-    console.log(`  ✓ ${tareaId} → ${elenco.nombre}: ${plantilla.titulo}`);
+    console.log(
+      `  ✓ ${tareaId} → ${elenco.nombre}${destinatario ? " (un alumno)" : ""}: ${plantilla.titulo}`
+    );
   }
 }
 

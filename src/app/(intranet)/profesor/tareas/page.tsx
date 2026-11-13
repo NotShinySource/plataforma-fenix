@@ -7,8 +7,9 @@ import { useElencos } from "@/hooks/useElencos";
 import { useTareas } from "@/hooks/useTareas";
 import { listarMiembrosDeElenco } from "@/services/elencos.service";
 import { eliminarTarea } from "@/services/tareas.service";
+import { obtenerUsuario } from "@/services/usuarios.service";
 import { PanelTarea } from "@/components/intranet/profesor/PanelTarea";
-import { TareaCard } from "@/components/intranet/profesor/TareaCard";
+import { TareaCard, type AlumnoDeElenco } from "@/components/intranet/profesor/TareaCard";
 import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
@@ -36,7 +37,7 @@ export default function ProfesorTareasPage() {
   );
   const { tareas, cargando: cargandoTareas, error: errorTareas } = useTareas(elencoIds);
 
-  const [alumnosPorElenco, setAlumnosPorElenco] = useState<Record<string, string[]>>({});
+  const [alumnosPorElenco, setAlumnosPorElenco] = useState<Record<string, AlumnoDeElenco[]>>({});
   const [panel, setPanel] = useState<EstadoPanel>(null);
   const [tareaAEliminar, setTareaAEliminar] = useState<ConId<Tarea> | null>(null);
   const [eliminando, setEliminando] = useState(false);
@@ -46,19 +47,44 @@ export default function ProfesorTareasPage() {
 
   const claveElencos = elencoIds?.join("|") ?? "";
 
-  // Alumnos activos de cada elenco: el denominador de la barra de avance.
+  // Alumnos activos de cada elenco, con su nombre: el denominador de la barra
+  // de avance y la lista para asignar una tarea a un alumno puntual.
   useEffect(() => {
     if (!claveElencos) return;
     let cancelado = false;
 
-    Promise.all(
-      claveElencos.split("|").map(async (elencoId) => {
-        const alumnos = await listarMiembrosDeElenco(elencoId, "alumno");
-        return [elencoId, alumnos.map((alumno) => alumno.usuarioId)] as const;
-      })
-    )
-      .then((pares) => {
-        if (!cancelado) setAlumnosPorElenco(Object.fromEntries(pares));
+    async function cargarAlumnos() {
+      const membresiasPorElenco = await Promise.all(
+        claveElencos.split("|").map(async (elencoId) => {
+          const membresias = await listarMiembrosDeElenco(elencoId, "alumno");
+          return [elencoId, membresias.map((membresia) => membresia.usuarioId)] as const;
+        })
+      );
+
+      // Un alumno puede estar en varios elencos: su perfil se pide una sola vez.
+      const uids = Array.from(new Set(membresiasPorElenco.flatMap(([, ids]) => ids)));
+      const nombres = new Map(
+        await Promise.all(
+          uids.map(async (uid) => {
+            const perfil = await obtenerUsuario(uid).catch(() => null);
+            return [uid, perfil ? `${perfil.nombres} ${perfil.apellidos}` : "Alumno"] as const;
+          })
+        )
+      );
+
+      return Object.fromEntries(
+        membresiasPorElenco.map(([elencoId, ids]) => [
+          elencoId,
+          ids
+            .map((id) => ({ id, nombre: nombres.get(id) ?? "Alumno" }))
+            .sort((a, b) => a.nombre.localeCompare(b.nombre, "es")),
+        ])
+      );
+    }
+
+    cargarAlumnos()
+      .then((porElenco) => {
+        if (!cancelado) setAlumnosPorElenco(porElenco);
       })
       .catch(() => {
         // Sin la lista de alumnos las tarjetas siguen siendo útiles; solo el
@@ -226,9 +252,9 @@ export default function ProfesorTareasPage() {
         <aside className="border border-dashed border-slate-300 rounded-3xl p-6 text-center space-y-2 bg-white/60">
           <h3 className="font-extrabold text-text-dark">Asignación de tareas</h3>
           <p className="text-sm font-medium text-slate-600 leading-relaxed">
-            Usa el botón &quot;Nueva Tarea Asignada&quot; para abrir el formulario y crear una
-            tarea con material PDF o de audio. Tus alumnos la verán de inmediato en &quot;Mis
-            Tareas&quot;.
+            Usa el botón &quot;Nueva Tarea Asignada&quot; para crear una tarea con material PDF
+            o de audio, para todo el elenco o para un solo alumno. La verán de inmediato en
+            &quot;Mis Tareas&quot;; una tarea individual solo la ve ese alumno.
           </p>
         </aside>
       </div>
@@ -237,6 +263,7 @@ export default function ProfesorTareasPage() {
         <PanelTarea
           key={panel.modo === "editar" ? panel.tarea.id : "nueva"}
           elencos={elencos}
+          alumnosPorElenco={alumnosPorElenco}
           profesorId={usuario.uid}
           tareaAEditar={panel.modo === "editar" ? panel.tarea : undefined}
           onCerrar={cerrarPanel}
@@ -255,8 +282,10 @@ export default function ProfesorTareasPage() {
         >
           <div className="space-y-5">
             <p className="text-sm font-medium text-slate-600 leading-relaxed">
-              La tarea desaparecerá para todos los alumnos del elenco, junto con su material
-              adjunto y el registro de quiénes la completaron. Esta acción no se puede deshacer.
+              {tareaAEliminar.alumnoId
+                ? "La tarea desaparecerá para el alumno al que se asignó, junto con su material adjunto y su registro de avance."
+                : "La tarea desaparecerá para todos los alumnos del elenco, junto con su material adjunto y el registro de quiénes la completaron."}{" "}
+              Esta acción no se puede deshacer.
             </p>
             {errorEliminar && (
               <p

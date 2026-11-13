@@ -19,7 +19,7 @@ export interface Asistencia {
   estado: EstadoAsistencia;
   /** Sesión de clase en que se tomó (ausente en los registros antiguos). */
   sesionId?: string;
-  /** Se escribe con serverTimestamp()/FieldValue.serverTimestamp() (decisión 4.2.9), nunca con Date del cliente. */
+  /** Se escribe con serverTimestamp()/FieldValue.serverTimestamp(), nunca con Date del cliente: la fecha la fija el servidor. */
   fechaRegistro: Date;
 }
 

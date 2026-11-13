@@ -66,17 +66,16 @@ export async function contarMiembrosPorElenco(): Promise<Record<string, number>>
 }
 
 /**
- * get() directo sobre el ID determinístico `{elencoId}_{usuarioId}` (decisión
- * 4.2.2) — para que la UI pueda verificar pertenencia real a un elenco antes
- * de mostrar su contenido, incluso mientras las Security Rules sigan en su
- * versión temporal simplificada (no validan esto todavía).
+ * get() directo sobre el ID determinístico `{elencoId}_{usuarioId}`, para que
+ * la UI verifique la pertenencia a un elenco antes de mostrar su contenido.
+ * Es una comprobación de interfaz: el control real lo hacen las Security Rules.
  */
 export async function esMiembroDeElenco(elencoId: string, usuarioId: string): Promise<boolean> {
   const snap = await getDoc(doc(db, COLECCION_MIEMBROS, `${elencoId}_${usuarioId}`));
   return snap.exists() && snap.data().activo === true;
 }
 
-/** Elencos de los que el usuario es miembro (alumno o profesor), vía miembros_elenco (decisión 4.2.2). */
+/** Elencos de los que el usuario es miembro (alumno o profesor), vía miembros_elenco. */
 export async function listarElencosPorUsuario(usuarioId: string): Promise<ConId<Elenco>[]> {
   const membresiasSnap = await getDocs(
     query(

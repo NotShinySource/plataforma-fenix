@@ -18,7 +18,7 @@ export const TIPOS_ELENCO = [
 
 export type TipoElenco = (typeof TIPOS_ELENCO)[number];
 
-/** aulas_virtuales queda fusionada aquí: era 1:1 sin identidad propia (decisión 4.2.1). */
+/** aulas_virtuales queda fusionada aquí: era 1:1 sin identidad propia y separarla solo agregaba una lectura. */
 export interface Elenco {
   nombre: string;
   disciplina: typeof DISCIPLINA_ELENCO;
@@ -26,7 +26,7 @@ export interface Elenco {
   descripcion: string;
   docenteResponsableId: string;
   activo: boolean;
-  /** Se escribe con serverTimestamp()/FieldValue.serverTimestamp() (decisión 4.2.9), nunca con Date del cliente. */
+  /** Se escribe con serverTimestamp()/FieldValue.serverTimestamp(), nunca con Date del cliente: la fecha la fija el servidor. */
   fechaCreacion: Date;
 }
 
@@ -44,7 +44,7 @@ export type CargoDocente = "titular" | "asistente";
 
 /**
  * Colección raíz `miembros_elenco`, ID determinístico `{elencoId}_{usuarioId}`
- * (decisión 4.2.2). elencoId y usuarioId se repiten como campos para permitir
+ * para garantizar unicidad sin transacciones. elencoId y usuarioId se repiten como campos para permitir
  * queries de un solo campo en ambas direcciones sin índices compuestos.
  */
 export interface MiembroElenco {
@@ -53,7 +53,7 @@ export interface MiembroElenco {
   rolEnElenco: RolEnElenco;
   /** Solo aplica cuando rolEnElenco === "profesor". */
   cargoDocente?: CargoDocente;
-  /** Se escribe con serverTimestamp()/FieldValue.serverTimestamp() (decisión 4.2.9), nunca con Date del cliente. */
+  /** Se escribe con serverTimestamp()/FieldValue.serverTimestamp(), nunca con Date del cliente: la fecha la fija el servidor. */
   fechaIngreso: Date;
   activo: boolean;
   /**

@@ -13,18 +13,23 @@ export default function AlumnoTareasPage() {
   const { usuario } = useAuth();
   const { elencos, cargando: cargandoElencos, error: errorElencos } = useElencos();
 
+  const alumnoId = usuario?.uid ?? "";
   const elencoIds = useMemo(
-    () => (cargandoElencos || errorElencos ? null : elencos.map((elenco) => elenco.id)),
-    [elencos, cargandoElencos, errorElencos]
+    () =>
+      cargandoElencos || errorElencos || !alumnoId ? null : elencos.map((elenco) => elenco.id),
+    [elencos, cargandoElencos, errorElencos, alumnoId]
   );
-  const { tareas, cargando: cargandoTareas, error: errorTareas } = useTareas(elencoIds);
+  const {
+    tareas,
+    cargando: cargandoTareas,
+    error: errorTareas,
+  } = useTareas(elencoIds, alumnoId);
 
   const nombresElencos = useMemo(
     () => Object.fromEntries(elencos.map((elenco) => [elenco.id, elenco.nombre])),
     [elencos]
   );
 
-  const alumnoId = usuario?.uid ?? "";
   const total = tareas.length;
   const hechas = tareas.filter((tarea) => tarea.completadoPor.includes(alumnoId)).length;
   const pendientes = total - hechas;
