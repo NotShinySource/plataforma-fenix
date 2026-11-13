@@ -1,5 +1,6 @@
 "use client";
 
+import { etiquetaTipoGrupo } from "@/lib/elencos";
 import { useState, type FormEvent } from "react";
 import { CalendarPlus, Pencil, Repeat } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
@@ -146,14 +147,17 @@ export function FormularioClase({
               className={CLASE_CAMPO}
             >
               <option value="">Selecciona un elenco o clase</option>
-              {[
-                { etiqueta: "Elencos", categoria: "elenco" },
-                { etiqueta: "Clases de instrumento", categoria: "instrumento" },
-              ].map((grupo) => {
-                const opciones = elencos.filter((elenco) => elenco.categoria === grupo.categoria);
+              {["Elenco", "Clase de instrumento", "Itinerancia"].map((tipo) => {
+                // Los grupos archivados no admiten clases nuevas.
+                const opciones = elencos.filter(
+                  (elenco) => elenco.activo && etiquetaTipoGrupo(elenco) === tipo
+                );
                 if (opciones.length === 0) return null;
                 return (
-                  <optgroup key={grupo.categoria} label={grupo.etiqueta}>
+                  <optgroup
+                    key={tipo}
+                    label={tipo === "Elenco" ? "Elencos" : tipo === "Itinerancia" ? "Itinerancias" : "Clases de instrumento"}
+                  >
                     {opciones.map((elenco) => (
                       <option key={elenco.id} value={elenco.id}>
                         {elenco.nombre}

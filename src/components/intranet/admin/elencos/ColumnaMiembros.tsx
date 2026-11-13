@@ -53,6 +53,8 @@ interface ColumnaMiembrosProps {
   quitandoId: string | null;
   onQuitar: (usuarioId: string, nombre: string) => void;
   onAgregado: () => void;
+  /** En un grupo archivado no se agregan miembros: se oculta el formulario. */
+  permiteAgregar?: boolean;
 }
 
 /**
@@ -69,6 +71,7 @@ export function ColumnaMiembros({
   quitandoId,
   onQuitar,
   onAgregado,
+  permiteAgregar = true,
 }: ColumnaMiembrosProps) {
   const configuracion = CONFIGURACION[rol];
   const Icono = configuracion.icono;
@@ -177,6 +180,7 @@ export function ColumnaMiembros({
         })}
       </div>
 
+      {permiteAgregar && (
       <form onSubmit={handleAgregar} className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 space-y-3">
         <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">{configuracion.agregar}</p>
         <input
@@ -230,6 +234,7 @@ export function ColumnaMiembros({
           {enviando ? "Agregando..." : configuracion.boton}
         </button>
       </form>
+      )}
     </div>
   );
 }

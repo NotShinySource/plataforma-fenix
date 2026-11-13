@@ -10,6 +10,8 @@ import {
  * - elenco e1: profesor "profe", alumnos "alumno" y "companero", y alumno "inactivo"
  *   (membresía desactivada);
  * - elenco e2: profesor "profe2";
+ * - itinerancia e3, archivada: profesor "profe" y alumno "alumno";
+ * - escuela es1;
  * - "ajeno": alumno sin elencos; "admin": la Dirección.
  */
 export const USUARIOS = {
@@ -53,11 +55,15 @@ export async function cargarEscenario(entorno: RulesTestEnvironment): Promise<vo
       ["usuarios/profe", { nombres: "Pedro", apellidos: "Soto", rol: "profesor" }],
       ["elencos/e1", { nombre: "Coro", activo: true }],
       ["elencos/e2", { nombre: "Banda", activo: true }],
+      ["elencos/e3", { nombre: "Musical", tipoGrupo: "itinerancia", activo: false }],
+      ["escuelas/es1", { nombre: "Coro", tipo: "conjunto", niveles: ["Niños"], activo: true }],
       ["miembros_elenco/e1_profe", membresia("e1", "profe", "profesor")],
       ["miembros_elenco/e1_alumno", membresia("e1", "alumno", "alumno")],
       ["miembros_elenco/e1_companero", membresia("e1", "companero", "alumno")],
       ["miembros_elenco/e1_inactivo", membresia("e1", "inactivo", "alumno", false)],
       ["miembros_elenco/e2_profe2", membresia("e2", "profe2", "profesor")],
+      ["miembros_elenco/e3_profe", membresia("e3", "profe", "profesor")],
+      ["miembros_elenco/e3_alumno", membresia("e3", "alumno", "alumno")],
       ["archivos/a1", { elencoId: "e1", profesorId: "profe", tipo: "pdf", titulo: "Partitura" }],
       ["avisos/v1", { elencoId: "e1", profesorId: "profe", titulo: "Ensayo", contenido: "Sábado", urgente: false }],
       ["asistencias/s1_alumno", { elencoId: "e1", alumnoId: "alumno", sesionId: "s1", estado: "presente" }],

@@ -77,6 +77,55 @@ describe("elencos y membresías", () => {
   });
 });
 
+describe("escuelas y grupos archivados", () => {
+  it("cualquier sesión lee las escuelas; sin sesión no, y nadie las escribe", async () => {
+    await assertSucceeds(db("alumno").collection("escuelas").get());
+    await assertSucceeds(db("profe").doc("escuelas/es1").get());
+    await assertFails(anonimo().collection("escuelas").get());
+    await assertFails(db("admin").collection("escuelas").add({ nombre: "Piano", tipo: "instrumento", niveles: ["Inicial"], activo: true }));
+    await assertFails(db("admin").doc("escuelas/es1").update({ niveles: ["Otro"] }));
+  });
+  it("en un grupo archivado el docente no publica material, avisos ni tareas", async () => {
+    const base = { elencoId: "e3", profesorId: "profe" };
+    await assertFails(
+      db("profe").collection("archivos").add({
+        ...base,
+        tipo: "pdf",
+        categoria: "Partitura",
+        titulo: "Score",
+        nombreArchivo: "score.pdf",
+        urlStorage: "https://ejemplo/score.pdf",
+        tamanioBytes: 1000,
+        fechaSubida: horaServidor(),
+      })
+    );
+    await assertFails(
+      db("profe").collection("avisos").add({
+        ...base,
+        titulo: "Ensayo",
+        contenido: "Sábado",
+        urgente: false,
+        fechaPublicacion: horaServidor(),
+      })
+    );
+    await assertFails(
+      db("profe").collection("tareas").add({
+        ...base,
+        titulo: "Repasar",
+        alumnoId: null,
+        tipoAdjunto: "Ninguno",
+        completadoPor: [],
+        completadoEn: {},
+        fechaCreacion: horaServidor(),
+      })
+    );
+  });
+  it("el historial de un grupo archivado se sigue leyendo", async () => {
+    await assertSucceeds(db("alumno").doc("elencos/e3").get());
+    await assertSucceeds(db("alumno").collection("avisos").where("elencoId", "==", "e3").get());
+  });
+});
+
 describe("archivos (material)", () => {
   const nuevo = (datos: Record<string, unknown> = {}) => ({
     elencoId: "e1",

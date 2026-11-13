@@ -1,127 +1,113 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Music2, Plus } from "lucide-react";
-import { auth } from "@/lib/firebase/client";
+import { Archive, Landmark, Music2, Plus, Route, type LucideIcon } from "lucide-react";
 import { contarMiembrosPorElenco, listarElencos } from "@/services/elencos.service";
+import { listarEscuelas } from "@/services/escuelas.service";
 import { ElencoCard } from "@/components/intranet/admin/ElencoCard";
+import { TarjetaEscuela } from "@/components/intranet/admin/elencos/TarjetaEscuela";
+import { ModalNuevaEscuela } from "@/components/intranet/admin/elencos/ModalNuevaEscuela";
+import { ModalNuevoElenco } from "@/components/intranet/admin/elencos/ModalNuevoElenco";
+import { ModalNuevaItinerancia } from "@/components/intranet/admin/elencos/ModalNuevaItinerancia";
 import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
-import { Modal } from "@/components/ui/Modal";
-import { crearElencoAction } from "./actions";
-import {
-  INSTRUMENTOS,
-  TIPOS_ELENCO,
-  type CategoriaElenco,
-  type ConId,
-  type Elenco,
-  type Instrumento,
-  type TipoElenco,
-} from "@/types";
+import type { ConId, Elenco, Escuela } from "@/types";
 
-const OPCIONES_CATEGORIA: { valor: CategoriaElenco; titulo: string; detalle: string }[] = [
-  { valor: "elenco", titulo: "Elenco", detalle: "Coro, banda, orquesta..." },
-  { valor: "instrumento", titulo: "Clase de instrumento", detalle: "Piano, guitarra..." },
+type Vista = "escuelas" | "elencos" | "itinerancias" | "archivados";
+
+const VISTAS: { valor: Vista; etiqueta: string; icono: LucideIcon }[] = [
+  { valor: "elencos", etiqueta: "Elencos", icono: Music2 },
+  { valor: "itinerancias", etiqueta: "Itinerancias", icono: Route },
+  { valor: "escuelas", etiqueta: "Escuelas", icono: Landmark },
+  { valor: "archivados", etiqueta: "Archivados", icono: Archive },
 ];
-import {
-  CLASE_BOTON_PRIMARIO,
-  CLASE_BOTON_SECUNDARIO,
-  CLASE_CAMPO,
-  CLASE_ERROR,
-  CLASE_ETIQUETA,
-} from "@/components/ui/estilos";
+
+const BOTON_CREAR: Partial<Record<Vista, string>> = {
+  escuelas: "Nueva escuela",
+  elencos: "Nuevo elenco",
+  itinerancias: "Nueva itinerancia",
+};
+
+interface Datos {
+  escuelas: ConId<Escuela>[];
+  elencos: ConId<Elenco>[];
+  conteos: Record<string, number>;
+}
+
+const porNombre = (a: { nombre: string }, b: { nombre: string }) =>
+  a.nombre.localeCompare(b.nombre, "es");
 
 export default function AdminElencosPage() {
   const router = useRouter();
-
-  const [elencos, setElencos] = useState<ConId<Elenco>[]>([]);
-  const [conteos, setConteos] = useState<Record<string, number>>({});
-  const [cargando, setCargando] = useState(true);
+  const [vista, setVista] = useState<Vista>("elencos");
+  const [datos, setDatos] = useState<Datos | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [recarga, setRecarga] = useState(0);
+  const [modal, setModal] = useState<Vista | null>(null);
 
-  const [modalCrear, setModalCrear] = useState(false);
-  const [nombre, setNombre] = useState("");
-  const [categoria, setCategoria] = useState<CategoriaElenco>("elenco");
-  const [tipoElenco, setTipoElenco] = useState<TipoElenco>(TIPOS_ELENCO[0]);
-  const [instrumento, setInstrumento] = useState<Instrumento>(INSTRUMENTOS[0]);
-  const [descripcion, setDescripcion] = useState("");
-  const [enviando, setEnviando] = useState(false);
-  const [errorCrear, setErrorCrear] = useState<string | null>(null);
+  const recargar = useCallback(() => setRecarga((n) => n + 1), []);
 
   useEffect(() => {
     let cancelado = false;
-
-    async function cargar() {
-      setCargando(true);
-      setError(null);
-      try {
-        const [elencosResultado, conteosResultado] = await Promise.all([
-          listarElencos(),
-          contarMiembrosPorElenco(),
-        ]);
-        if (!cancelado) {
-          setElencos(
-            elencosResultado.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"))
-          );
-          setConteos(conteosResultado);
-        }
-      } catch {
-        if (!cancelado) setError("No se pudieron cargar los elencos y clases.");
-      } finally {
-        if (!cancelado) setCargando(false);
-      }
-    }
-
-    cargar();
-
+    Promise.all([listarEscuelas(), listarElencos(), contarMiembrosPorElenco()])
+      .then(([escuelas, elencos, conteos]) => {
+        if (cancelado) return;
+        setDatos({ escuelas, elencos: elencos.sort(porNombre), conteos });
+        setError(null);
+      })
+      .catch(() => {
+        if (!cancelado) setError("No se pudieron cargar los elencos.");
+      });
     return () => {
       cancelado = true;
     };
-  }, []);
+  }, [recarga]);
 
-  const listaElencos = elencos.filter((elenco) => elenco.categoria === "elenco");
-  const listaClases = elencos.filter((elenco) => elenco.categoria === "instrumento");
-  const cantidadElencos = listaElencos.length;
-  const cantidadClases = listaClases.length;
-
-  function cerrarModalCrear() {
-    if (enviando) return;
-    setModalCrear(false);
-    setErrorCrear(null);
-  }
-
-  async function handleSubmit(evento: FormEvent<HTMLFormElement>) {
-    evento.preventDefault();
-    setErrorCrear(null);
-
-    if (!auth.currentUser) return;
-
-    setEnviando(true);
-
-    try {
-      const idTokenAdmin = await auth.currentUser.getIdToken();
-      const resultado = await crearElencoAction({
-        nombre,
-        categoria,
-        ...(categoria === "elenco" ? { tipoElenco } : { instrumento }),
-        descripcion,
-        idTokenAdmin,
+  const resumen = useMemo(() => {
+    const elencos = datos?.elencos ?? [];
+    const activos = elencos.filter((elenco) => elenco.activo);
+    const gruposPorEscuela = new Map<string, ConId<Elenco>[]>();
+    activos
+      .filter((elenco) => elenco.tipoGrupo === "escuela")
+      .forEach((elenco) => {
+        const clave = elenco.escuelaId ?? "";
+        gruposPorEscuela.set(clave, [...(gruposPorEscuela.get(clave) ?? []), elenco]);
       });
+    return {
+      gruposPorEscuela,
+      itinerancias: activos.filter((elenco) => elenco.tipoGrupo === "itinerancia"),
+      archivados: elencos.filter((elenco) => !elenco.activo),
+      escuelasActivas: (datos?.escuelas ?? []).filter((escuela) => escuela.activo),
+      escuelasArchivadas: (datos?.escuelas ?? []).filter((escuela) => !escuela.activo),
+    };
+  }, [datos]);
 
-      if (!resultado.ok || !resultado.elencoId) {
-        setErrorCrear(resultado.error ?? "No se pudo crear.");
-        setEnviando(false);
-        return;
-      }
-
-      router.push(`/admin/elencos/${resultado.elencoId}`);
-    } catch {
-      setErrorCrear("No se pudo crear. Intenta de nuevo.");
-      setEnviando(false);
-    }
+  function cerrarModalYRecargar() {
+    setModal(null);
+    recargar();
   }
+
+  function irAlGrupo(elencoId: string) {
+    router.push(`/admin/elencos/${elencoId}`);
+  }
+
+  const tarjetas = (lista: ConId<Elenco>[]) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      {lista.map((elenco, indice) => (
+        <ElencoCard
+          key={elenco.id}
+          elenco={elenco}
+          indice={indice}
+          cantidadMiembros={datos?.conteos[elenco.id] ?? 0}
+        />
+      ))}
+    </div>
+  );
+
+  const textoCrear = BOTON_CREAR[vista];
+  const sinEscuelasParaElencos = vista === "elencos" && resumen.escuelasActivas.length === 0;
 
   return (
     <>
@@ -134,201 +120,167 @@ export default function AdminElencosPage() {
             Elencos y clases
           </h1>
           <p className="text-slate-600 text-sm font-medium mt-1">
-            {cargando
-              ? "Cargando..."
-              : `${cantidadElencos} ${cantidadElencos === 1 ? "elenco" : "elencos"} y ${cantidadClases} ${cantidadClases === 1 ? "clase de instrumento" : "clases de instrumento"}. Selecciona uno para asignar docentes y alumnos.`}
+            Escuelas con sus niveles, sus elencos y las itinerancias. Selecciona un grupo para
+            asignar docentes y alumnos.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setModalCrear(true)}
-          className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white px-5 py-3 rounded-2xl font-bold text-sm transition-all shadow-lg shadow-primary/25 active:scale-[0.98]"
-        >
-          <Plus className="w-4 h-4" />
-          Nuevo elenco o clase
-        </button>
+        {textoCrear && (
+          <button
+            type="button"
+            onClick={() => setModal(vista)}
+            disabled={!datos || sinEscuelasParaElencos}
+            className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white px-5 py-3 rounded-2xl font-bold text-sm transition-all shadow-lg shadow-primary/25 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <Plus className="w-4 h-4" />
+            {textoCrear}
+          </button>
+        )}
       </div>
 
-      {cargando && <EstadoCargando texto="Cargando elencos y clases..." />}
+      <div
+        role="tablist"
+        aria-label="Secciones"
+        className="flex gap-1 overflow-x-auto bg-slate-100 p-1 rounded-2xl w-full sm:w-fit"
+      >
+        {VISTAS.map(({ valor, etiqueta, icono: Icono }) => {
+          const activa = vista === valor;
+          return (
+            <button
+              key={valor}
+              type="button"
+              role="tab"
+              aria-selected={activa}
+              onClick={() => setVista(valor)}
+              className={`inline-flex items-center gap-1.5 whitespace-nowrap px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
+                activa ? "bg-white text-primary shadow-sm" : "text-slate-600 hover:text-text-dark"
+              }`}
+            >
+              <Icono className="w-4 h-4" />
+              {etiqueta}
+            </button>
+          );
+        })}
+      </div>
+
+      {!datos && !error && <EstadoCargando texto="Cargando elencos..." />}
       {error && <EstadoError mensaje={error} />}
-      {!cargando && !error && elencos.length === 0 && (
-        <EstadoVacio
-          icono={Music2}
-          titulo="Todavía no hay elencos ni clases creados"
-          descripcion={'Crea el primero con el botón "Nuevo elenco o clase".'}
-        />
+
+      {datos && vista === "elencos" && (
+        <div className="space-y-8">
+          {sinEscuelasParaElencos && (
+            <EstadoVacio
+              icono={Landmark}
+              titulo="Primero crea una escuela"
+              descripcion='Cada elenco pertenece a una escuela y un nivel. Créala en la pestaña "Escuelas".'
+            />
+          )}
+          {!sinEscuelasParaElencos && resumen.gruposPorEscuela.size === 0 && (
+            <EstadoVacio
+              icono={Music2}
+              titulo="Todavía no hay elencos"
+              descripcion={'Crea el primero con el botón "Nuevo elenco".'}
+            />
+          )}
+          {datos.escuelas
+            .filter((escuela) => resumen.gruposPorEscuela.has(escuela.id))
+            .map((escuela) => (
+              <section key={escuela.id} className="space-y-4">
+                <h2 className="text-lg font-extrabold text-text-dark">
+                  {escuela.nombre}
+                  <span className="ml-2 text-xs font-bold uppercase tracking-wider text-slate-600">
+                    {escuela.tipo === "instrumento" ? "Instrumento" : "Conjunto"}
+                  </span>
+                </h2>
+                {tarjetas(resumen.gruposPorEscuela.get(escuela.id)!)}
+              </section>
+            ))}
+          {/* Grupos creados antes de existir las escuelas, o cuya escuela ya no existe. */}
+          {(() => {
+            const idsEscuelas = new Set(datos.escuelas.map((escuela) => escuela.id));
+            const sueltos = Array.from(resumen.gruposPorEscuela.entries())
+              .filter(([escuelaId]) => !idsEscuelas.has(escuelaId))
+              .flatMap(([, grupos]) => grupos);
+            return sueltos.length > 0 ? (
+              <section className="space-y-4">
+                <h2 className="text-lg font-extrabold text-text-dark">Sin escuela</h2>
+                {tarjetas(sueltos)}
+              </section>
+            ) : null;
+          })()}
+        </div>
       )}
-      {!cargando &&
-        !error &&
-        [
-          { titulo: "Elencos", lista: listaElencos },
-          { titulo: "Clases de instrumento", lista: listaClases },
-        ]
-          .filter((seccion) => seccion.lista.length > 0)
-          .map((seccion) => (
-            <section key={seccion.titulo} className="space-y-4">
-              <h2 className="text-lg font-extrabold text-text-dark">{seccion.titulo}</h2>
+
+      {datos && vista === "itinerancias" &&
+        (resumen.itinerancias.length === 0 ? (
+          <EstadoVacio
+            icono={Route}
+            titulo="No hay itinerancias activas"
+            descripcion="Una itinerancia es un grupo temporal, por ejemplo el elenco de un musical, con integrantes de varios elencos."
+          />
+        ) : (
+          tarjetas(resumen.itinerancias)
+        ))}
+
+      {datos && vista === "escuelas" &&
+        (datos.escuelas.length === 0 ? (
+          <EstadoVacio
+            icono={Landmark}
+            titulo="Todavía no hay escuelas"
+            descripcion={'Crea la primera con el botón "Nueva escuela".'}
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {resumen.escuelasActivas.map((escuela) => (
+              <TarjetaEscuela
+                key={escuela.id}
+                escuela={escuela}
+                cantidadGrupos={resumen.gruposPorEscuela.get(escuela.id)?.length ?? 0}
+                onCambio={recargar}
+              />
+            ))}
+          </div>
+        ))}
+
+      {datos && vista === "archivados" && (
+        <div className="space-y-8">
+          {resumen.archivados.length === 0 && resumen.escuelasArchivadas.length === 0 && (
+            <EstadoVacio
+              icono={Archive}
+              titulo="No hay nada archivado"
+              descripcion="Los grupos y escuelas archivados conservan su historial y se pueden reactivar."
+            />
+          )}
+          {resumen.archivados.length > 0 && (
+            <section className="space-y-4">
+              <h2 className="text-lg font-extrabold text-text-dark">Grupos archivados</h2>
+              {tarjetas(resumen.archivados)}
+            </section>
+          )}
+          {resumen.escuelasArchivadas.length > 0 && (
+            <section className="space-y-4">
+              <h2 className="text-lg font-extrabold text-text-dark">Escuelas archivadas</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {seccion.lista.map((elenco, indice) => (
-                  <ElencoCard
-                    key={elenco.id}
-                    elenco={elenco}
-                    indice={indice}
-                    cantidadMiembros={conteos[elenco.id] ?? 0}
-                  />
+                {resumen.escuelasArchivadas.map((escuela) => (
+                  <TarjetaEscuela key={escuela.id} escuela={escuela} cantidadGrupos={0} onCambio={recargar} />
                 ))}
               </div>
             </section>
-          ))}
+          )}
+        </div>
+      )}
 
-      {modalCrear && (
-        <Modal
-          titulo="Nuevo elenco o clase"
-          subtitulo="Después podrás asignarle docentes y alumnos"
-          icono={Music2}
-          bloqueado={enviando}
-          onCerrar={cerrarModalCrear}
-        >
-          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            <fieldset>
-              <legend className={CLASE_ETIQUETA}>¿Qué vas a crear?</legend>
-              <div className="grid grid-cols-2 gap-3">
-                {OPCIONES_CATEGORIA.map((opcion) => {
-                  const activa = categoria === opcion.valor;
-                  return (
-                    <label
-                      key={opcion.valor}
-                      className={`cursor-pointer rounded-2xl border-2 px-4 py-3 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/40 ${
-                        activa
-                          ? "border-primary bg-primary/5"
-                          : "border-slate-200 hover:border-slate-300"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="categoria"
-                        value={opcion.valor}
-                        checked={activa}
-                        onChange={() => setCategoria(opcion.valor)}
-                        className="sr-only"
-                      />
-                      <span className="block text-sm font-extrabold text-text-dark">
-                        {opcion.titulo}
-                      </span>
-                      <span className="block text-xs font-semibold text-slate-600 mt-0.5">
-                        {opcion.detalle}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            </fieldset>
-
-            <div>
-              <label htmlFor="nombre" className={CLASE_ETIQUETA}>
-                Nombre
-              </label>
-              <input
-                id="nombre"
-                type="text"
-                placeholder={categoria === "elenco" ? "Ej: Coro Infantil" : "Ej: Piano Inicial"}
-                value={nombre}
-                onChange={(evento) => setNombre(evento.target.value)}
-                required
-                maxLength={100}
-                autoFocus
-                className={CLASE_CAMPO}
-              />
-            </div>
-
-            {categoria === "elenco" ? (
-              <div>
-                <label htmlFor="tipoElenco" className={CLASE_ETIQUETA}>
-                  Tipo de elenco
-                </label>
-                <select
-                  id="tipoElenco"
-                  value={tipoElenco}
-                  onChange={(evento) => setTipoElenco(evento.target.value as TipoElenco)}
-                  required
-                  className={CLASE_CAMPO}
-                >
-                  {TIPOS_ELENCO.map((opcion) => (
-                    <option key={opcion} value={opcion}>
-                      {opcion}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <div>
-                <label htmlFor="instrumento" className={CLASE_ETIQUETA}>
-                  Instrumento
-                </label>
-                <select
-                  id="instrumento"
-                  value={instrumento}
-                  onChange={(evento) => setInstrumento(evento.target.value as Instrumento)}
-                  required
-                  className={CLASE_CAMPO}
-                >
-                  {INSTRUMENTOS.map((opcion) => (
-                    <option key={opcion} value={opcion}>
-                      {opcion}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="descripcion" className={CLASE_ETIQUETA}>
-                Descripción{" "}
-                <span className="normal-case font-semibold text-slate-600">(opcional)</span>
-              </label>
-              <textarea
-                id="descripcion"
-                placeholder={
-                  categoria === "elenco"
-                    ? "Breve descripción del elenco..."
-                    : "Nivel, edades o detalles de la clase..."
-                }
-                value={descripcion}
-                onChange={(evento) => setDescripcion(evento.target.value)}
-                maxLength={500}
-                rows={3}
-                className={`${CLASE_CAMPO} resize-none`}
-              />
-            </div>
-
-            {errorCrear && (
-              <p
-                role="alert"
-                className={CLASE_ERROR}
-              >
-                {errorCrear}
-              </p>
-            )}
-
-            <div className="flex gap-3 pt-1">
-              <button
-                type="button"
-                onClick={cerrarModalCrear}
-                disabled={enviando}
-                className={CLASE_BOTON_SECUNDARIO}
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={enviando}
-                className={CLASE_BOTON_PRIMARIO}
-              >
-                {enviando ? "Creando..." : categoria === "elenco" ? "Crear elenco" : "Crear clase"}
-              </button>
-            </div>
-          </form>
-        </Modal>
+      {modal === "escuelas" && (
+        <ModalNuevaEscuela onCerrar={() => setModal(null)} onCreada={cerrarModalYRecargar} />
+      )}
+      {modal === "elencos" && (
+        <ModalNuevoElenco
+          escuelas={resumen.escuelasActivas}
+          onCerrar={() => setModal(null)}
+          onCreado={irAlGrupo}
+        />
+      )}
+      {modal === "itinerancias" && (
+        <ModalNuevaItinerancia onCerrar={() => setModal(null)} onCreada={irAlGrupo} />
       )}
     </>
   );

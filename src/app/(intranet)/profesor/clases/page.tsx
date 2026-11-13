@@ -27,6 +27,7 @@ import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import { iniciarClaseAction } from "./actions";
+import { limitesDeGrupo } from "@/lib/elencos";
 import type { ConId, SesionClase } from "@/types";
 import { CLASE_ERROR } from "@/components/ui/estilos";
 
@@ -43,6 +44,11 @@ export default function ProfesorClasesPage() {
   const [errorInicio, setErrorInicio] = useState<string | null>(null);
 
   const claveElencos = elencos.map((elenco) => elenco.id).join("|");
+  // Una itinerancia con fechas solo tiene clases dentro de ellas.
+  const limitesPorElenco = useMemo(
+    () => Object.fromEntries(elencos.map((elenco) => [elenco.id, limitesDeGrupo(elenco)])),
+    [elencos]
+  );
 
   useEffect(() => {
     if (!claveElencos) return;
@@ -53,7 +59,14 @@ export default function ProfesorClasesPage() {
       .then(([clases, sesiones, semestres]) => {
         if (cancelado) return;
         setOcurrencias(
-          construirOcurrencias(clases, sesiones, semestres, hoy, sumarDias(hoy, DIAS_PROXIMOS))
+          construirOcurrencias(
+            clases,
+            sesiones,
+            semestres,
+            hoy,
+            sumarDias(hoy, DIAS_PROXIMOS),
+            limitesPorElenco
+          )
         );
         // Una clase que quedó abierta un día anterior también se muestra, para poder cerrarla.
         setEnCurso(sesiones.filter((sesion) => sesion.estado === "en_curso"));
@@ -66,7 +79,7 @@ export default function ProfesorClasesPage() {
     return () => {
       cancelado = true;
     };
-  }, [claveElencos, hoy]);
+  }, [claveElencos, hoy, limitesPorElenco]);
 
   const nombresElencos = useMemo(
     () => Object.fromEntries(elencos.map((elenco) => [elenco.id, elenco.nombre])),

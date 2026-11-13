@@ -16,7 +16,9 @@
     "seed": "tsx scripts/seed-test-users.ts",
     "seed:admin": "tsx scripts/seed-admin-user.ts",
     "seed:tareas": "tsx scripts/seed-tareas.ts",
-    "migrar:tareas": "tsx scripts/migrar-tareas-destinatario.ts"
+    "migrar:tareas": "tsx scripts/migrar-tareas-destinatario.ts",
+    "seed:escuelas": "tsx scripts/seed-escuelas.ts",
+    "eliminar:elenco": "tsx scripts/eliminar-elenco.ts"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

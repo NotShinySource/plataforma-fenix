@@ -4,7 +4,15 @@ import { FieldValue, type Timestamp, type WithFieldValue } from "firebase-admin/
 import { dbAdmin } from "@/lib/firebase/admin";
 import { esProfesorDelElenco, verificarUsuario } from "@/lib/auth/verificar-usuario";
 import { fechasProgramadas, hoyEnChile, idSesion } from "@/lib/clases/calendario";
-import type { Asistencia, Clase, ObservacionAsistencia, Semestre, SesionClase } from "@/types";
+import { limitesDeGrupo } from "@/lib/elencos";
+import type {
+  Asistencia,
+  Clase,
+  Elenco,
+  ObservacionAsistencia,
+  Semestre,
+  SesionClase,
+} from "@/types";
 
 const LONGITUD_MAXIMA_RESUMEN = 2000;
 const LONGITUD_MAXIMA_OBSERVACION = 500;
@@ -64,13 +72,32 @@ export async function iniciarClaseAction(input: {
         return { ok: false as const, error: "Esta clase fue cancelada por la administración." };
       }
 
+      // Un grupo archivado no admite clases nuevas.
+      const grupoSnap = await transaccion.get(dbAdmin.collection("elencos").doc(elencoId));
+      const grupo = grupoSnap.data() as Partial<Elenco> | undefined;
+      if (!grupo || grupo.activo === false) {
+        return { ok: false as const, error: "El grupo está archivado: no se pueden iniciar clases." };
+      }
+
       // Sin documento previo, la fecha tiene que ser una ocurrencia real de la serie.
       if (!existente) {
         if (!clase) return { ok: false as const, error: "La clase ya no existe." };
         const semestresSnap = await transaccion.get(dbAdmin.collection("semestres"));
         const semestres: Record<string, Semestre> = {};
         semestresSnap.docs.forEach((d) => (semestres[d.id] = d.data() as Semestre));
-        const fechas = fechasProgramadas(clase, semestres, input.fechaProgramada, input.fechaProgramada);
+        const limites = limitesDeGrupo({
+          activo: true,
+          tipoGrupo: grupo.tipoGrupo === "itinerancia" ? "itinerancia" : "escuela",
+          fechaInicio: grupo.fechaInicio,
+          fechaTermino: grupo.fechaTermino,
+        });
+        const fechas = fechasProgramadas(
+          clase,
+          semestres,
+          input.fechaProgramada,
+          input.fechaProgramada,
+          limites
+        );
         if (fechas.length === 0) {
           return { ok: false as const, error: "Esa fecha no corresponde a la clase." };
         }

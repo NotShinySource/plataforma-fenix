@@ -39,6 +39,9 @@ describe("subida de material", () => {
     await assertSucceeds(subir("profe", "elencos/e1/mp3/pista.mp3", bytes(1000), MP3));
     await assertSucceeds(subir("profe", "elencos/e1/wav/pista.wav", bytes(1000), { contentType: "audio/wav" }));
   });
+  it("no se sube material a un grupo archivado", async () => {
+    await assertFails(subir("profe", "elencos/e3/pdf/score.pdf", bytes(1000), PDF));
+  });
   it("no suben alumnos ni docentes de otro elenco", async () => {
     await assertFails(subir("alumno", "elencos/e1/pdf/score.pdf", bytes(1000), PDF));
     await assertFails(subir("profe2", "elencos/e1/pdf/score.pdf", bytes(1000), PDF));

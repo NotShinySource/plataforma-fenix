@@ -10,7 +10,8 @@ import {
   idSemestre,
   idSesion,
 } from "@/lib/clases/calendario";
-import type { Clase, Semestre, SesionClase } from "@/types";
+import { fechaDentroDeLimites, limitesDeGrupo, type LimitesGrupo } from "@/lib/elencos";
+import type { Clase, Elenco, Semestre, SesionClase } from "@/types";
 
 const DURACION_MINIMA = 15;
 const DURACION_MAXIMA = 8 * 60;
@@ -36,6 +37,31 @@ async function cargarSemestres(): Promise<Record<string, Semestre>> {
 async function cargarClase(claseId: string): Promise<Clase | null> {
   const snap = await coleccionClases().doc(claseId).get();
   return snap.exists ? (snap.data() as Clase) : null;
+}
+
+/**
+ * Período en que el grupo admite clases (ninguno si está archivado), o null
+ * si el grupo ya no existe.
+ */
+async function cargarLimitesGrupo(elencoId: string): Promise<LimitesGrupo | null> {
+  const snap = await dbAdmin.collection("elencos").doc(elencoId).get();
+  if (!snap.exists) return null;
+  const datos = snap.data() as Partial<Elenco>;
+  return limitesDeGrupo({
+    activo: datos.activo !== false,
+    tipoGrupo: datos.tipoGrupo === "itinerancia" ? "itinerancia" : "escuela",
+    fechaInicio: datos.fechaInicio,
+    fechaTermino: datos.fechaTermino,
+  });
+}
+
+/** Mensaje si la fecha no cabe en el período del grupo; null si cabe. */
+function problemaConLimites(fecha: string, limites: LimitesGrupo): string | null {
+  if (limites.archivado) return "El grupo está archivado: no admite clases nuevas.";
+  if (!fechaDentroDeLimites(fecha, limites)) {
+    return "La fecha está fuera del período de la itinerancia.";
+  }
+  return null;
 }
 
 function validarHorario(horaInicio: string, duracionMinutos: number): string | null {
@@ -129,8 +155,10 @@ export async function crearClaseAction(input: CrearClaseInput): Promise<Resultad
   }
 
   try {
-    const elenco = await dbAdmin.collection("elencos").doc(input.elencoId).get();
-    if (!elenco.exists) return { ok: false, error: "El elenco no existe." };
+    const limites = await cargarLimitesGrupo(String(input.elencoId));
+    if (!limites) return { ok: false, error: "El elenco no existe." };
+    const problemaFecha = problemaConLimites(input.fecha, limites);
+    if (problemaFecha) return { ok: false, error: problemaFecha };
 
     let repeticion: Clase["repeticion"] = { tipo: "unica" };
 
@@ -247,8 +275,19 @@ async function validarOcurrenciaEditable(
   const clase = await cargarClase(claseId);
   if (!clase) return { ok: false, error: "La clase ya no existe." };
 
-  const semestres = await cargarSemestres();
-  const esOcurrencia = fechasProgramadas(clase, semestres, fechaProgramada, fechaProgramada).length;
+  const [semestres, limites] = await Promise.all([
+    cargarSemestres(),
+    cargarLimitesGrupo(clase.elencoId),
+  ]);
+  if (!limites) return { ok: false, error: "El grupo de esta clase ya no existe." };
+  if (limites.archivado) return { ok: false, error: "El grupo está archivado: su horario no se modifica." };
+  const esOcurrencia = fechasProgramadas(
+    clase,
+    semestres,
+    fechaProgramada,
+    fechaProgramada,
+    limites
+  ).length;
   if (!esOcurrencia) return { ok: false, error: "Esa fecha no corresponde a la clase." };
 
   const sesion = await coleccionSesiones().doc(idSesion(claseId, fechaProgramada)).get();
@@ -279,6 +318,11 @@ export async function editarOcurrenciaAction(
   try {
     const validacion = await validarOcurrenciaEditable(input.claseId, input.fechaProgramada);
     if (!validacion.ok) return validacion;
+
+    // Mover una clase de una itinerancia no puede sacarla de su período.
+    const limites = await cargarLimitesGrupo(validacion.clase.elencoId);
+    const problemaFecha = limites ? problemaConLimites(input.fecha, limites) : null;
+    if (problemaFecha) return { ok: false, error: problemaFecha };
 
     const sesion: WithFieldValue<SesionClase> = {
       claseId: input.claseId,
