@@ -116,7 +116,7 @@ export interface AgregarMiembroResultado {
 
 /**
  * Agrega un usuario existente a un elenco: crea miembros_elenco/{elencoId}_{usuarioId}
- * (ID determinístico, decisión 4.2.2). Si es profesor con cargo "titular",
+ * (ID determinístico, sin duplicados posibles). Si es profesor con cargo "titular",
  * también actualiza elencos/{elencoId}.docenteResponsableId.
  */
 export async function agregarMiembroAction(

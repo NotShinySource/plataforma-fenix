@@ -193,12 +193,17 @@ describe("tareas", () => {
     titulo: "Repasar escalas",
     elencoId: "e1",
     profesorId: "profe",
+    alumnoId: null,
     tipoAdjunto: "Ninguno",
     completadoPor: [],
     completadoEn: {},
     fechaCreacion: horaServidor(),
     ...datos,
   });
+  const tareasDe = (nombre: NombreUsuario, elencoId: string, alumnoId?: string | null) => {
+    const consulta = db(nombre).collection("tareas").where("elencoId", "==", elencoId);
+    return alumnoId === undefined ? consulta : consulta.where("alumnoId", "==", alumnoId);
+  };
   const marcar = (uid: string) => ({
     completadoPor: firebase.firestore.FieldValue.arrayUnion(uid),
     [`completadoEn.${uid}`]: horaServidor(),
@@ -225,6 +230,42 @@ describe("tareas", () => {
   it("solo quien la creó la elimina", async () => {
     await assertFails(db("alumno").doc("tareas/t1").delete());
     await assertSucceeds(db("profe").doc("tareas/t1").delete());
+  });
+
+  it("el docente asigna una tarea a un alumno activo de su elenco", async () => {
+    await assertSucceeds(db("profe").collection("tareas").add(tarea({ alumnoId: "alumno" })));
+    await assertFails(db("profe").collection("tareas").add(tarea({ alumnoId: "inactivo" })));
+    await assertFails(db("profe").collection("tareas").add(tarea({ alumnoId: "ajeno" })));
+    await assertFails(db("profe").collection("tareas").add(tarea({ alumnoId: "profe" })));
+  });
+  it("toda tarea nueva declara su destinatario", async () => {
+    const sinDestinatario: Record<string, unknown> = tarea();
+    delete sinDestinatario.alumnoId;
+    await assertFails(db("profe").collection("tareas").add(sinDestinatario));
+  });
+  it("el alumno ve las tareas del elenco y las suyas, no las de un compañero", async () => {
+    await assertSucceeds(tareasDe("alumno", "e1", null).get());
+    await assertSucceeds(tareasDe("alumno", "e1", "alumno").get());
+    await assertSucceeds(db("alumno").doc("tareas/t2").get());
+    await assertFails(tareasDe("companero", "e1", "alumno").get());
+    await assertFails(db("companero").doc("tareas/t2").get());
+    // Sin filtrar por destinatario la consulta podría traer tareas ajenas.
+    await assertFails(tareasDe("alumno", "e1").get());
+    await assertFails(tareasDe("ajeno", "e1", null).get());
+  });
+  it("el docente del elenco y la Dirección ven todas, también las individuales", async () => {
+    await assertSucceeds(tareasDe("profe", "e1").get());
+    await assertSucceeds(db("profe").doc("tareas/t2").get());
+    await assertSucceeds(db("admin").doc("tareas/t2").get());
+    await assertFails(tareasDe("profe2", "e1").get());
+  });
+  it("solo el destinatario marca una tarea individual", async () => {
+    await assertSucceeds(db("alumno").doc("tareas/t2").update(marcar("alumno")));
+    await assertFails(db("companero").doc("tareas/t2").update(marcar("companero")));
+  });
+  it("el destinatario no cambia una vez asignada", async () => {
+    await assertFails(db("profe").doc("tareas/t2").update({ alumnoId: null }));
+    await assertFails(db("profe").doc("tareas/t1").update({ alumnoId: "alumno" }));
   });
 });
 

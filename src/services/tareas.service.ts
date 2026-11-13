@@ -35,6 +35,7 @@ function mapTarea(id: string, data: DocumentData): ConId<Tarea> {
     titulo: data.titulo,
     elencoId: data.elencoId,
     profesorId: data.profesorId,
+    alumnoId: data.alumnoId ?? null,
     fechaLimite: data.fechaLimite ? timestampADate(data.fechaLimite) : undefined,
     tipoAdjunto: data.tipoAdjunto ?? "Ninguno",
     urlAdjunto: data.urlAdjunto,
@@ -46,30 +47,57 @@ function mapTarea(id: string, data: DocumentData): ConId<Tarea> {
 }
 
 /**
- * Escucha en tiempo real las tareas de uno o más elencos. Una suscripción por
- * elenco (solo `where` de igualdad, sin índices compuestos); el resultado se
- * entrega combinado y recién cuando todos los elencos respondieron al menos
- * una vez, para no mostrar listas parciales.
+ * Escucha en tiempo real las tareas de uno o más elencos. Solo usa `where` de
+ * igualdad, sin índices compuestos. El resultado se entrega combinado y
+ * recién cuando todas las consultas respondieron al menos una vez, para no
+ * mostrar listas parciales.
+ *
+ * - Sin `alumnoId` (docente o Dirección): una consulta por elenco, con todas
+ *   sus tareas, también las individuales.
+ * - Con `alumnoId` (vista del alumno): dos consultas por elenco, las del
+ *   elenco completo (`alumnoId == null`) y las dirigidas a ese alumno. Las
+ *   reglas no son filtros: el alumno no puede pedir todas las del elenco y
+ *   descartar las ajenas en el navegador.
  */
 export function suscribirTareasDeElencos(
   elencoIds: string[],
   onTareas: (tareas: ConId<Tarea>[]) => void,
-  onError: () => void
+  onError: () => void,
+  alumnoId?: string
 ): Unsubscribe {
-  const porElenco = new Map<string, ConId<Tarea>[]>();
+  const destinatarios: Array<string | null> | null = alumnoId ? [null, alumnoId] : null;
+  const consultas = elencoIds.flatMap((elencoId) =>
+    destinatarios
+      ? destinatarios.map((destinatario) => ({
+          clave: `${elencoId}|${destinatario ?? "elenco"}`,
+          consulta: query(
+            collection(db, COLECCION),
+            where("elencoId", "==", elencoId),
+            where("alumnoId", "==", destinatario)
+          ),
+        }))
+      : [
+          {
+            clave: elencoId,
+            consulta: query(collection(db, COLECCION), where("elencoId", "==", elencoId)),
+          },
+        ]
+  );
 
-  const cancelaciones = elencoIds.map((elencoId) =>
+  const porConsulta = new Map<string, ConId<Tarea>[]>();
+
+  const cancelaciones = consultas.map(({ clave, consulta }) =>
     onSnapshot(
-      query(collection(db, COLECCION), where("elencoId", "==", elencoId)),
+      consulta,
       (snap) => {
-        porElenco.set(
-          elencoId,
+        porConsulta.set(
+          clave,
           // "estimate": mientras el servidor no confirma un serverTimestamp()
           // recién escrito, se usa la hora local en vez de null.
           snap.docs.map((d) => mapTarea(d.id, d.data({ serverTimestamps: "estimate" })))
         );
-        if (porElenco.size === elencoIds.length) {
-          onTareas(Array.from(porElenco.values()).flat());
+        if (porConsulta.size === consultas.length) {
+          onTareas(Array.from(porConsulta.values()).flat());
         }
       },
       onError
@@ -83,6 +111,8 @@ interface DatosNuevaTarea {
   titulo: string;
   elencoId: string;
   profesorId: string;
+  /** Alumno destinatario; `null` para todo el elenco. */
+  alumnoId: string | null;
   fechaLimite?: Date;
   tipoAdjunto: TipoAdjuntoTarea;
   /** Obligatorio cuando tipoAdjunto no es "Ninguno". */
@@ -109,6 +139,7 @@ export async function crearTarea(datos: DatosNuevaTarea): Promise<string> {
     titulo: datos.titulo,
     elencoId: datos.elencoId,
     profesorId: datos.profesorId,
+    alumnoId: datos.alumnoId,
     tipoAdjunto: adjunto ? datos.tipoAdjunto : "Ninguno",
     completadoPor: [],
     completadoEn: {},
@@ -121,7 +152,7 @@ export async function crearTarea(datos: DatosNuevaTarea): Promise<string> {
   return docRef.id;
 }
 
-/** Solo título y fecha límite: el elenco y el adjunto no cambian una vez asignada. */
+/** Solo título y fecha límite: el elenco, el destinatario y el adjunto no cambian una vez asignada. */
 export async function actualizarTarea(
   tareaId: string,
   cambios: { titulo: string; fechaLimite: Date | null }

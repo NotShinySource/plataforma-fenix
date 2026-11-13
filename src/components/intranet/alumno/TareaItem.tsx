@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Check, Download, FileText } from "lucide-react";
+import { CalendarDays, Check, Download, FileText, UserRound } from "lucide-react";
 import { formatearFechaCorta } from "@/lib/format";
 import { ReproductorAudio } from "@/components/intranet/shared/ReproductorAudio";
 import type { ConId, Tarea } from "@/types";
@@ -61,6 +61,12 @@ export function TareaItem({
         </p>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          {tarea.alumnoId && (
+            <span className="inline-flex items-center gap-1 bg-terracotta/10 text-terracotta px-2.5 py-0.5 rounded-full text-xs font-bold">
+              <UserRound className="w-3.5 h-3.5" />
+              Solo para ti
+            </span>
+          )}
           {nombreProfesor && (
             <span className="bg-primary/10 text-primary px-2.5 py-0.5 rounded-full text-xs font-bold">
               Prof. {nombreProfesor}

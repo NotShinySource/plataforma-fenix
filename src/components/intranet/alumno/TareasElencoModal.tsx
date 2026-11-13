@@ -15,9 +15,9 @@ interface TareasElencoModalProps {
 }
 
 /**
- * Pop-up con las tareas de un solo elenco. La consulta a Firestore ya viene
- * filtrada por ese elenco: no trae las tareas de los demás para descartarlas
- * después en el navegador.
+ * Pop-up con las tareas de un solo elenco: las del elenco completo y las
+ * dirigidas a este alumno. La consulta a Firestore ya viene filtrada: no trae
+ * tareas ajenas para descartarlas después en el navegador.
  */
 export function TareasElencoModal({
   elencoId,
@@ -25,7 +25,7 @@ export function TareasElencoModal({
   alumnoId,
   onCerrar,
 }: TareasElencoModalProps) {
-  const { tareas, cargando, error } = useTareas([elencoId]);
+  const { tareas, cargando, error } = useTareas([elencoId], alumnoId);
 
   return (
     <Modal

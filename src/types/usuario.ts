@@ -7,7 +7,7 @@ export type RolUsuario = "alumno" | "profesor" | "administrador";
 export type EstadoActivacion = "pendiente" | "activada";
 
 /**
- * El ID del documento es el UID de Firebase Auth (decisión 4.2.5), no un campo propio.
+ * El ID del documento es el UID de Firebase Auth, no un campo propio.
  * RUT, correos y fecha de nacimiento NO están aquí: viven cifrados en
  * `datos_privados/{uid}` (ver src/types/datos-privados.ts), porque esta
  * colección la puede leer cualquier usuario con sesión.
@@ -24,6 +24,6 @@ export interface Usuario {
   /** Cuándo egresó. Pasados 12 meses, la cuenta puede eliminarse (ver src/lib/egreso.ts). */
   fechaEgreso?: Date;
   estadoActivacion: EstadoActivacion;
-  /** Se escribe con serverTimestamp()/FieldValue.serverTimestamp() (decisión 4.2.9), nunca con Date del cliente. */
+  /** Se escribe con serverTimestamp()/FieldValue.serverTimestamp(), nunca con Date del cliente: la fecha la fija el servidor. */
   fechaCreacion: Date;
 }

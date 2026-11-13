@@ -9,6 +9,6 @@ export interface Archivo {
   nombreArchivo: string;
   urlStorage: string;
   tamanioBytes: number;
-  /** Se escribe con serverTimestamp()/FieldValue.serverTimestamp() (decisión 4.2.9), nunca con Date del cliente. */
+  /** Se escribe con serverTimestamp()/FieldValue.serverTimestamp(), nunca con Date del cliente: la fecha la fija el servidor. */
   fechaSubida: Date;
 }

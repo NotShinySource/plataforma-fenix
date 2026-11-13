@@ -18,9 +18,15 @@ import {
   type TipoAdjuntoTarea,
 } from "@/types";
 import { CLASE_CAMPO, CLASE_ERROR } from "@/components/ui/estilos";
+import type { AlumnoDeElenco } from "@/components/intranet/profesor/TareaCard";
+
+/** Valor del selector de destinatario que significa "todo el elenco". */
+const TODO_EL_ELENCO = "";
 
 interface PanelTareaProps {
   elencos: ConId<Elenco>[];
+  /** Alumnos activos por elenco; un elenco sin entrada todavía se está cargando. */
+  alumnosPorElenco: Record<string, AlumnoDeElenco[]>;
   profesorId: string;
   /** Si viene, el panel edita esa tarea (solo título y fecha límite) en vez de crear una nueva. */
   tareaAEditar?: ConId<Tarea>;
@@ -30,11 +36,18 @@ interface PanelTareaProps {
 const ICONO_ADJUNTO = { Ninguno: null, PDF: FileText, Audio: AudioLines } as const;
 
 /** Panel lateral desplegable para asignar una tarea nueva o editar una existente. */
-export function PanelTarea({ elencos, profesorId, tareaAEditar, onCerrar }: PanelTareaProps) {
+export function PanelTarea({
+  elencos,
+  alumnosPorElenco,
+  profesorId,
+  tareaAEditar,
+  onCerrar,
+}: PanelTareaProps) {
   const editando = tareaAEditar !== undefined;
 
   const [titulo, setTitulo] = useState(tareaAEditar?.titulo ?? "");
   const [elencoId, setElencoId] = useState(tareaAEditar?.elencoId ?? "");
+  const [destinatarioId, setDestinatarioId] = useState(tareaAEditar?.alumnoId ?? TODO_EL_ELENCO);
   const [fechaLimite, setFechaLimite] = useState(
     tareaAEditar?.fechaLimite ? fechaAValorInput(tareaAEditar.fechaLimite) : ""
   );
@@ -57,6 +70,19 @@ export function PanelTarea({ elencos, profesorId, tareaAEditar, onCerrar }: Pane
       document.removeEventListener("keydown", handleTecla);
     };
   }, [guardando, onCerrar]);
+
+  const alumnosDelElenco = elencoId ? (alumnosPorElenco[elencoId] ?? null) : [];
+  // Al editar, el destinatario puede haber dejado el elenco: se muestra igual.
+  const destinatarioRetirado =
+    destinatarioId !== TODO_EL_ELENCO &&
+    alumnosDelElenco !== null &&
+    !alumnosDelElenco.some((alumno) => alumno.id === destinatarioId);
+
+  function handleElenco(nuevoElencoId: string) {
+    setElencoId(nuevoElencoId);
+    // Cada elenco tiene sus propios alumnos: el destinatario no se arrastra.
+    setDestinatarioId(TODO_EL_ELENCO);
+  }
 
   function handleTipoAdjunto(tipo: TipoAdjuntoTarea) {
     setTipoAdjunto(tipo);
@@ -91,6 +117,10 @@ export function PanelTarea({ elencos, profesorId, tareaAEditar, onCerrar }: Pane
       setError("Selecciona el elenco al que se asigna la tarea.");
       return;
     }
+    if (!editando && destinatarioRetirado) {
+      setError("Ese alumno ya no está en el elenco. Elige otro destinatario.");
+      return;
+    }
     if (!editando && tipoAdjunto !== "Ninguno" && !archivo) {
       setError(`Selecciona el archivo ${tipoAdjunto === "PDF" ? "PDF" : "de audio"} a adjuntar.`);
       return;
@@ -108,6 +138,7 @@ export function PanelTarea({ elencos, profesorId, tareaAEditar, onCerrar }: Pane
           titulo: tituloLimpio,
           elencoId,
           profesorId,
+          alumnoId: destinatarioId === TODO_EL_ELENCO ? null : destinatarioId,
           fechaLimite: fecha,
           tipoAdjunto,
           archivo: archivo ?? undefined,
@@ -187,13 +218,13 @@ export function PanelTarea({ elencos, profesorId, tareaAEditar, onCerrar }: Pane
                 htmlFor="tarea-elenco"
                 className="block text-sm font-bold text-slate-700 mb-1.5"
               >
-                Asignar a:
+                Elenco
               </label>
               <select
                 id="tarea-elenco"
                 required
                 value={elencoId}
-                onChange={(evento) => setElencoId(evento.target.value)}
+                onChange={(evento) => handleElenco(evento.target.value)}
                 disabled={guardando || editando}
                 className={CLASE_CAMPO}
               >
@@ -204,11 +235,41 @@ export function PanelTarea({ elencos, profesorId, tareaAEditar, onCerrar }: Pane
                   </option>
                 ))}
               </select>
-              {editando && (
-                <p className="text-xs font-semibold text-slate-600 mt-1.5">
-                  El elenco no se puede cambiar una vez asignada la tarea.
-                </p>
-              )}
+            </div>
+
+            <div>
+              <label
+                htmlFor="tarea-destinatario"
+                className="block text-sm font-bold text-slate-700 mb-1.5"
+              >
+                Asignar a
+              </label>
+              <select
+                id="tarea-destinatario"
+                value={destinatarioId}
+                onChange={(evento) => setDestinatarioId(evento.target.value)}
+                disabled={guardando || editando || !elencoId || alumnosDelElenco === null}
+                className={CLASE_CAMPO}
+              >
+                <option value={TODO_EL_ELENCO}>Todo el elenco</option>
+                {destinatarioRetirado && (
+                  <option value={destinatarioId}>Alumno que ya no está en el elenco</option>
+                )}
+                {(alumnosDelElenco ?? []).map((alumno) => (
+                  <option key={alumno.id} value={alumno.id}>
+                    {alumno.nombre}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs font-semibold text-slate-600 mt-1.5">
+                {editando
+                  ? "El elenco y el destinatario no se pueden cambiar una vez asignada la tarea."
+                  : elencoId && alumnosDelElenco === null
+                    ? "Cargando los alumnos del elenco..."
+                    : destinatarioId === TODO_EL_ELENCO
+                      ? "La verán todos los alumnos del elenco."
+                      : "Solo la verá este alumno; sus compañeros no."}
+              </p>
             </div>
 
             <div>

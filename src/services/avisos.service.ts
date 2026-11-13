@@ -71,7 +71,7 @@ export async function listarAvisosPorElenco(elencoId: string): Promise<ConId<Avi
 }
 
 /**
- * Marca el aviso como leído por el alumno (decisión 4.2.4): solo se escribe
+ * Marca el aviso como leído por el alumno: solo se escribe
  * cuando el alumno realmente lo abre, nunca de antemano para todos.
  */
 export async function marcarAvisoComoLeido(avisoId: string, alumnoId: string): Promise<void> {

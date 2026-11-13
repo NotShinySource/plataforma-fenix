@@ -1,13 +1,28 @@
-import { AudioLines, CalendarDays, Download, FileText, Pencil, Trash2, Users } from "lucide-react";
+import {
+  AudioLines,
+  CalendarDays,
+  Download,
+  FileText,
+  Pencil,
+  Trash2,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { formatearDiaMes } from "@/lib/format";
 import { ReproductorAudio } from "@/components/intranet/shared/ReproductorAudio";
 import type { ConId, Tarea } from "@/types";
+
+/** Alumno activo de un elenco, con el nombre que se muestra al docente. */
+export interface AlumnoDeElenco {
+  id: string;
+  nombre: string;
+}
 
 interface TareaCardProps {
   tarea: ConId<Tarea>;
   nombreElenco: string;
   /** Alumnos activos del elenco; `null` mientras todavía se están cargando. */
-  alumnosDelElenco: string[] | null;
+  alumnosDelElenco: AlumnoDeElenco[] | null;
   /** Solo el docente que asignó la tarea puede editarla o eliminarla. */
   puedeGestionar: boolean;
   onEditar: (tarea: ConId<Tarea>) => void;
@@ -22,13 +37,26 @@ export function TareaCard({
   onEditar,
   onEliminar,
 }: TareaCardProps) {
+  const individual = tarea.alumnoId !== null;
+  const destinatario = individual
+    ? alumnosDelElenco?.find((alumno) => alumno.id === tarea.alumnoId)
+    : undefined;
+
   // Solo cuentan los alumnos que siguen en el elenco: si alguien que ya había
-  // cumplido la tarea fue retirado, no debe inflar el porcentaje.
-  const total = alumnosDelElenco?.length ?? 0;
-  const completaron = alumnosDelElenco
-    ? tarea.completadoPor.filter((alumnoId) => alumnosDelElenco.includes(alumnoId)).length
-    : 0;
+  // cumplido la tarea fue retirado, no debe inflar el porcentaje. Una tarea
+  // individual cuenta solo a su destinatario.
+  const considerados = individual ? (destinatario ? [destinatario] : []) : (alumnosDelElenco ?? []);
+  const total = considerados.length;
+  const completaron = considerados.filter((alumno) =>
+    tarea.completadoPor.includes(alumno.id)
+  ).length;
   const porcentaje = total > 0 ? Math.round((completaron / total) * 100) : 0;
+
+  let textoAvance: string;
+  if (alumnosDelElenco === null) textoAvance = "Calculando avance...";
+  else if (!individual) textoAvance = `${completaron} de ${total} alumnos completaron`;
+  else if (!destinatario) textoAvance = "El alumno ya no está en el elenco";
+  else textoAvance = completaron > 0 ? "Completada" : "Pendiente";
 
   return (
     <article className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 flex flex-col gap-4">
@@ -38,6 +66,14 @@ export function TareaCard({
             <Users className="w-3.5 h-3.5" />
             {nombreElenco}
           </span>
+          {individual && (
+            <span className="inline-flex items-center gap-1.5 bg-terracotta/10 text-terracotta px-2.5 py-1 rounded-full text-xs font-bold max-w-full">
+              <UserRound className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="truncate">
+                Para {destinatario?.nombre ?? (alumnosDelElenco === null ? "..." : "alumno retirado")}
+              </span>
+            </span>
+          )}
           {tarea.tipoAdjunto !== "Ninguno" && (
             <span className="inline-flex items-center gap-1.5 border border-slate-200 text-slate-600 px-2.5 py-1 rounded-full text-xs font-bold">
               {tarea.tipoAdjunto === "PDF" ? (
@@ -103,11 +139,7 @@ export function TareaCard({
 
       <div className="mt-auto space-y-2 pt-1">
         <div className="flex items-center justify-between gap-3 text-sm font-semibold">
-          <span className="text-slate-700">
-            {alumnosDelElenco === null
-              ? "Calculando avance..."
-              : `${completaron} de ${total} alumnos completaron`}
-          </span>
+          <span className="text-slate-700">{textoAvance}</span>
           <span className="font-extrabold text-primary tabular-nums">{porcentaje}%</span>
         </div>
         <div

@@ -17,32 +17,41 @@ interface ResultadoSuscripcion {
 }
 
 const SEPARADOR = "|";
+const SEPARADOR_ALUMNO = "#";
 
 /**
  * Tareas de un conjunto de elencos, en tiempo real. `null` significa que
  * todavía no se sabe qué elencos son (siguen cargando); un arreglo vacío,
  * que no hay ninguno.
+ *
+ * El alumno pasa su `alumnoId`: recibe las tareas del elenco completo y las
+ * dirigidas a él, nunca las individuales de sus compañeros. El docente lo
+ * omite y recibe todas las de sus elencos.
  */
-export function useTareas(elencoIds: string[] | null): UseTareasResultado {
+export function useTareas(elencoIds: string[] | null, alumnoId?: string): UseTareasResultado {
   // Clave estable: el efecto solo se reinicia si cambia el conjunto de
-  // elencos, no cada vez que el componente crea un arreglo nuevo.
-  const clave = elencoIds === null ? null : [...elencoIds].sort().join(SEPARADOR);
+  // elencos o el alumno, no cada vez que el componente crea un arreglo nuevo.
+  const elencos = elencoIds === null ? null : [...elencoIds].sort().join(SEPARADOR);
+  const clave = elencos === null ? null : `${alumnoId ?? ""}${SEPARADOR_ALUMNO}${elencos}`;
   const [resultado, setResultado] = useState<ResultadoSuscripcion | null>(null);
 
   useEffect(() => {
     if (!clave) return;
+    const [alumno, listaElencos] = clave.split(SEPARADOR_ALUMNO);
+    if (!listaElencos) return;
 
     return suscribirTareasDeElencos(
-      clave.split(SEPARADOR),
+      listaElencos.split(SEPARADOR),
       (tareas) => setResultado({ clave, tareas, error: false }),
-      () => setResultado({ clave, tareas: [], error: true })
+      () => setResultado({ clave, tareas: [], error: true }),
+      alumno || undefined
     );
   }, [clave]);
 
-  if (clave === null) return { tareas: [], cargando: true, error: null };
-  if (clave === "") return { tareas: [], cargando: false, error: null };
+  if (elencos === null) return { tareas: [], cargando: true, error: null };
+  if (elencos === "") return { tareas: [], cargando: false, error: null };
 
-  // Un resultado de otro conjunto de elencos ya no vale: se sigue cargando.
+  // Un resultado de otra consulta ya no vale: se sigue cargando.
   if (resultado?.clave !== clave) return { tareas: [], cargando: true, error: null };
 
   return {

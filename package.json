@@ -15,7 +15,8 @@
     "test:reglas": "firebase emulators:exec --only firestore,storage --project demo-fenix \"vitest run --project reglas\"",
     "seed": "tsx scripts/seed-test-users.ts",
     "seed:admin": "tsx scripts/seed-admin-user.ts",
-    "seed:tareas": "tsx scripts/seed-tareas.ts"
+    "seed:tareas": "tsx scripts/seed-tareas.ts",
+    "migrar:tareas": "tsx scripts/migrar-tareas-destinatario.ts"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
