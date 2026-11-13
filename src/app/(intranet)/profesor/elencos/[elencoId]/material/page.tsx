@@ -1,5 +1,6 @@
 "use client";
 
+import { etiquetaTipoGrupo } from "@/lib/elencos";
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -150,7 +151,7 @@ export default function ProfesorMaterialPage() {
 
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-sm space-y-2">
         <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider inline-block">
-          {elenco.tipoElenco}
+          {etiquetaTipoGrupo(elenco)}
         </span>
         <h2 className="text-2xl sm:text-3xl font-black text-text-dark">{elenco.nombre}</h2>
         <p className="text-slate-600 text-sm leading-relaxed max-w-2xl font-medium">

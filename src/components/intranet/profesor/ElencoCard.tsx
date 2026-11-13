@@ -1,3 +1,4 @@
+import { etiquetaTipoGrupo } from "@/lib/elencos";
 import Link from "next/link";
 import { CalendarDays, FolderUp } from "lucide-react";
 import type { ConId, Elenco } from "@/types";
@@ -11,7 +12,7 @@ export function ElencoCard({ elenco }: ElencoCardProps) {
     <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
       <div className="space-y-2">
         <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider inline-block">
-          {elenco.tipoElenco}
+          {etiquetaTipoGrupo(elenco)}
         </span>
         <h4 className="font-extrabold text-xl text-text-dark">{elenco.nombre}</h4>
         <p className="text-slate-600 text-sm leading-relaxed font-medium line-clamp-2">

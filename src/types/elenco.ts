@@ -18,11 +18,44 @@ export const TIPOS_ELENCO = [
 
 export type TipoElenco = (typeof TIPOS_ELENCO)[number];
 
+/**
+ * Un grupo puede ser un elenco (conjunto musical) o una clase de instrumento
+ * que no pertenece a ningún elenco (por ejemplo, solo piano). Ambos usan la
+ * misma colección y funcionan igual: miembros, material, asistencia,
+ * horario, tareas y avisos.
+ */
+export const CATEGORIAS_ELENCO = ["elenco", "instrumento"] as const;
+
+export type CategoriaElenco = (typeof CATEGORIAS_ELENCO)[number];
+
+export const INSTRUMENTOS = [
+  "Piano",
+  "Guitarra",
+  "Violín",
+  "Viola",
+  "Violonchelo",
+  "Contrabajo",
+  "Flauta traversa",
+  "Clarinete",
+  "Saxofón",
+  "Trompeta",
+  "Trombón",
+  "Percusión",
+  "Canto",
+] as const;
+
+export type Instrumento = (typeof INSTRUMENTOS)[number];
+
 /** aulas_virtuales queda fusionada aquí: era 1:1 sin identidad propia y separarla solo agregaba una lectura. */
 export interface Elenco {
   nombre: string;
   disciplina: typeof DISCIPLINA_ELENCO;
-  tipoElenco: TipoElenco;
+  /** Los grupos creados antes de existir las clases de instrumento se leen como "elenco". */
+  categoria: CategoriaElenco;
+  /** Solo cuando categoria === "elenco". */
+  tipoElenco?: TipoElenco;
+  /** Solo cuando categoria === "instrumento". */
+  instrumento?: Instrumento;
   descripcion: string;
   docenteResponsableId: string;
   activo: boolean;

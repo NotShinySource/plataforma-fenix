@@ -1,5 +1,6 @@
 "use client";
 
+import { etiquetaTipoGrupo } from "@/lib/elencos";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -136,7 +137,7 @@ export default function AdminElencoDetallePage() {
             </div>
             <div className="min-w-0">
               <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider inline-block mb-1">
-                {elenco.tipoElenco}
+                {etiquetaTipoGrupo(elenco)}
               </span>
               <h1 className="text-xl sm:text-2xl font-black text-text-dark leading-tight">
                 {elenco.nombre}
