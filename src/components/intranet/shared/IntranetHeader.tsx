@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Music } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { obtenerUsuario } from "@/services/usuarios.service";
-import type { ConId, Usuario } from "@/types";
+import { usePerfilPropio } from "@/hooks/usePerfilPropio";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface ItemNav {
   href: string;
@@ -18,30 +17,17 @@ interface IntranetHeaderProps {
 }
 
 export function IntranetHeader({ nav }: IntranetHeaderProps) {
-  const { usuario, logout } = useAuth();
+  const { logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
-  const [perfil, setPerfil] = useState<ConId<Usuario> | null>(null);
-
-  useEffect(() => {
-    if (!usuario) return;
-    let cancelado = false;
-
-    obtenerUsuario(usuario.uid).then((resultado) => {
-      if (!cancelado) setPerfil(resultado);
-    });
-
-    return () => {
-      cancelado = true;
-    };
-  }, [usuario]);
+  const { perfil, cargando: cargandoPerfil } = usePerfilPropio();
 
   async function handleLogout() {
     await logout();
     router.replace("/login");
   }
 
-  const nombreMostrado = perfil ? `${perfil.nombres} ${perfil.apellidos}` : "Calambanda";
+  const nombreMostrado = perfil ? `${perfil.nombres} ${perfil.apellidos}` : null;
 
   function estaActivo(href: string): boolean {
     return href === nav[0]?.href ? pathname === href : pathname.startsWith(href);
@@ -59,9 +45,13 @@ export function IntranetHeader({ nav }: IntranetHeaderProps) {
               <span className="font-extrabold text-xl tracking-tighter text-text-dark block">
                 FÉNIX INTRANET
               </span>
-              <span className="text-xs font-bold tracking-widest text-slate-600 uppercase mt-0.5 block truncate">
-                Hola, {nombreMostrado}
-              </span>
+              {cargandoPerfil ? (
+                <Skeleton className="h-3 w-32 mt-1.5" />
+              ) : (
+                <span className="text-xs font-bold tracking-widest text-slate-600 uppercase mt-0.5 block truncate">
+                  {nombreMostrado ? `Hola, ${nombreMostrado}` : "Calambanda"}
+                </span>
+              )}
             </div>
           </div>
 

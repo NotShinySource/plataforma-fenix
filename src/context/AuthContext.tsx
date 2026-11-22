@@ -10,6 +10,7 @@ import {
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { cerrarSesionServidorAction } from "@/app/(auth)/sesion-actions";
+import { olvidarPerfilPropio } from "@/lib/perfil-propio";
 import type { RolUsuario } from "@/types";
 
 interface AuthContextValue {
@@ -29,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const desuscribir = onAuthStateChanged(auth, async (usuarioActual) => {
       if (!usuarioActual) {
+        olvidarPerfilPropio();
         setUsuario(null);
         setRol(null);
         setCargando(false);
