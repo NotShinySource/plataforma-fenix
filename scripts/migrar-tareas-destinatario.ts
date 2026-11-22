@@ -16,60 +16,19 @@
  *   npm run migrar:tareas -- --proyecto-real --simular
  *   npm run migrar:tareas -- --proyecto-real       (proyecto real)
  *
- * Igual que los seeds, no usa src/lib/firebase/admin.ts porque ese módulo
- * importa "server-only", que falla fuera del bundler de Next.js.
+ * El destino lo decide solo `--proyecto-real` (ver scripts/conexion-admin.ts):
+ * sin esa opción trabaja contra el emulador.
  */
-import { config } from "dotenv";
-config({ path: [".env.local", ".env"] });
-
-import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { conectar } from "./conexion-admin";
 
 const COLECCION = "tareas";
 /** Firestore acepta hasta 500 escrituras por lote. */
 const TAMANO_LOTE = 400;
 
-const usarEmulador = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === "true";
-const proyectoRealPedido = process.argv.includes("--proyecto-real");
 const simular = process.argv.includes("--simular");
-
-if (!usarEmulador && !proyectoRealPedido) {
-  console.error(
-    "NEXT_PUBLIC_USE_FIREBASE_EMULATOR no está en 'true', así que este script\n" +
-      "escribiría en el proyecto REAL de Firebase. Abortando por seguridad.\n\n" +
-      "  - Para usar el emulador: pon la variable en \"true\" y levanta los emuladores.\n" +
-      "  - Para migrar el proyecto real a propósito: npm run migrar:tareas -- --proyecto-real"
-  );
-  process.exit(1);
-}
-
-if (usarEmulador) {
-  process.env.FIRESTORE_EMULATOR_HOST ??= "127.0.0.1:8080";
-}
-
-const projectId =
-  process.env.FIREBASE_ADMIN_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n");
-
-if (!projectId) {
-  throw new Error("Falta FIREBASE_ADMIN_PROJECT_ID o NEXT_PUBLIC_FIREBASE_PROJECT_ID.");
-}
-if (!usarEmulador && (!clientEmail || !privateKey)) {
-  throw new Error("Faltan FIREBASE_ADMIN_CLIENT_EMAIL / FIREBASE_ADMIN_PRIVATE_KEY.");
-}
-
-const app =
-  getApps()[0] ??
-  initializeApp(
-    usarEmulador
-      ? { projectId }
-      : { credential: cert({ projectId, clientEmail: clientEmail!, privateKey: privateKey! }) }
-  );
-const dbAdmin = getFirestore(app);
+const { db: dbAdmin, destino } = conectar();
 
 async function migrar(): Promise<void> {
-  const destino = usarEmulador ? "el EMULADOR" : `el proyecto REAL (${projectId})`;
   console.log(`${simular ? "Simulando la migración" : "Migrando"} de "${COLECCION}" en ${destino}...\n`);
 
   const snap = await dbAdmin.collection(COLECCION).get();

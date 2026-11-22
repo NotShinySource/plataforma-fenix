@@ -139,7 +139,7 @@ export default function AdminUsuariosPage() {
           <h1 className="text-2xl sm:text-3xl font-black text-text-dark mt-1">Usuarios</h1>
           <p className="text-slate-600 text-sm font-medium mt-1">
             {cargandoUsuarios
-              ? "Cargando..."
+              ? "Cargando cuentas…"
               : `${usuarios.length} ${usuarios.length === 1 ? "cuenta registrada" : "cuentas registradas"}${
                   totalPendientes > 0 ? ` · ${totalPendientes} sin activar` : ""
                 }${totalEgresados > 0 ? ` · ${totalEgresados} egresadas` : ""}`}

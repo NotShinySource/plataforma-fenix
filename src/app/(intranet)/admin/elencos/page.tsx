@@ -162,7 +162,7 @@ export default function AdminElencosPage() {
         })}
       </div>
 
-      {!datos && !error && <EstadoCargando texto="Cargando elencos..." />}
+      {!datos && !error && <EstadoCargando texto="Cargando elencos..." variante="tarjetas" />}
       {error && <EstadoError mensaje={error} />}
 
       {datos && vista === "elencos" && (

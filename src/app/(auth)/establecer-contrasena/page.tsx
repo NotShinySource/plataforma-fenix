@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState, type FormEvent } from "react";
+import { Skeleton } from "@/components/ui/Skeleton";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -220,7 +221,14 @@ export default function EstablecerContrasenaPage() {
       {/* useSearchParams exige un límite de Suspense para el build estático. */}
       <Suspense
         fallback={
-          <p className="text-center text-slate-600 text-sm font-semibold py-6">Cargando...</p>
+          <div role="status" className="space-y-4 py-2">
+            <span className="sr-only">Cargando...</span>
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-4 w-36" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full mt-2" />
+          </div>
         }
       >
         <FormularioEstablecerContrasena />
