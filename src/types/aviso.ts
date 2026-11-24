@@ -1,5 +1,19 @@
+/**
+ * "elenco": el aviso es para los miembros de un grupo. "escuela": lo ven
+ * todos los alumnos y docentes (por ejemplo, la suspensión de clases por un
+ * feriado). Solo la Dirección publica avisos para toda la escuela.
+ */
+export type AlcanceAviso = "elenco" | "escuela";
+
+/** Quién lo publicó: el docente del grupo o la Dirección (el Administrador). */
+export type OrigenAviso = "profesor" | "direccion";
+
 export interface Aviso {
-  elencoId: string;
+  alcance: AlcanceAviso;
+  origen: OrigenAviso;
+  /** Grupo destinatario; `null` en un aviso para toda la escuela. */
+  elencoId: string | null;
+  /** Autor: el docente o el Administrador que lo publicó. */
   profesorId: string;
   titulo: string;
   contenido: string;

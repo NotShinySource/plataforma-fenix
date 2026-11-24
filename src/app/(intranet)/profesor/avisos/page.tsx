@@ -1,21 +1,27 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { AlertTriangle, Megaphone } from "lucide-react";
+import { Megaphone } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useElencos } from "@/hooks/useElencos";
-import { listarAvisosPorElenco, publicarAviso } from "@/services/avisos.service";
-import { formatearFechaLarga } from "@/lib/format";
+import {
+  listarAvisosDeEscuela,
+  listarAvisosPorElenco,
+  publicarAviso,
+} from "@/services/avisos.service";
+import { destinoAviso } from "@/lib/avisos";
+import { FilaAviso } from "@/components/intranet/shared/FilaAviso";
 import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
-import type { Aviso, ConId, Elenco } from "@/types";
+import type { Aviso, ConId } from "@/types";
 import { CLASE_CAMPO, CLASE_ERROR } from "@/components/ui/estilos";
 import { LONGITUD_MAXIMA_CONTENIDO_AVISO, LONGITUD_MAXIMA_TITULO_AVISO } from "@/lib/validacion";
 
-interface AvisoConElenco {
+interface AvisoConDestino {
   aviso: ConId<Aviso>;
-  elenco: ConId<Elenco>;
+  /** El grupo o "Toda la escuela". */
+  destino: string;
 }
 
 export default function ProfesorAvisosPage() {
@@ -29,7 +35,7 @@ export default function ProfesorAvisosPage() {
   const [publicando, setPublicando] = useState(false);
   const [errorPublicar, setErrorPublicar] = useState<string | null>(null);
 
-  const [avisos, setAvisos] = useState<AvisoConElenco[]>([]);
+  const [avisos, setAvisos] = useState<AvisoConDestino[]>([]);
   const [cargandoAvisos, setCargandoAvisos] = useState(true);
   const [errorAvisos, setErrorAvisos] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
@@ -44,12 +50,16 @@ export default function ProfesorAvisosPage() {
       setCargandoAvisos(true);
       setErrorAvisos(null);
       try {
-        const porElenco = await Promise.all(
-          elencos.map(async (elenco) => {
+        // Los de sus grupos y los de la Dirección para toda la escuela.
+        const porElenco = await Promise.all([
+          listarAvisosDeEscuela().then((lista) =>
+            lista.map((aviso) => ({ aviso, destino: destinoAviso(aviso) }))
+          ),
+          ...elencos.map(async (elenco) => {
             const avisosDelElenco = await listarAvisosPorElenco(elenco.id);
-            return avisosDelElenco.map((aviso) => ({ aviso, elenco }));
-          })
-        );
+            return avisosDelElenco.map((aviso) => ({ aviso, destino: elenco.nombre }));
+          }),
+        ]);
         if (cancelado) return;
         const combinados = porElenco
           .flat()
@@ -195,7 +205,7 @@ export default function ProfesorAvisosPage() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-extrabold text-text-dark">Avisos publicados</h3>
+            <h3 className="text-lg font-extrabold text-text-dark">Avisos de tus grupos y de la Dirección</h3>
 
             {cargandoAvisos && <EstadoCargando texto="Cargando avisos..." />}
             {!cargandoAvisos && errorAvisos && <EstadoError mensaje={errorAvisos} />}
@@ -208,38 +218,8 @@ export default function ProfesorAvisosPage() {
             )}
             {!cargandoAvisos && !errorAvisos && avisos.length > 0 && (
               <div className="space-y-3">
-                {avisos.map(({ aviso, elenco }) => (
-                  <div
-                    key={aviso.id}
-                    className={`bg-white rounded-2xl border p-5 flex items-start gap-4 ${
-                      aviso.urgente ? "border-terracotta/30" : "border-slate-100"
-                    }`}
-                  >
-                    <div
-                      className={`p-2.5 rounded-xl flex-shrink-0 ${
-                        aviso.urgente ? "bg-terracotta/10 text-terracotta" : "bg-primary/10 text-primary"
-                      }`}
-                    >
-                      <AlertTriangle className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {aviso.urgente && (
-                          <span className="bg-terracotta text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                            Urgente
-                          </span>
-                        )}
-                        <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
-                          {elenco.nombre}
-                        </span>
-                      </div>
-                      <h4 className="font-extrabold text-text-dark leading-snug mt-1">{aviso.titulo}</h4>
-                      <p className="text-sm text-slate-600 font-medium mt-1">{aviso.contenido}</p>
-                      <p className="text-xs text-slate-600 font-semibold mt-2">
-                        {formatearFechaLarga(aviso.fechaPublicacion)}
-                      </p>
-                    </div>
-                  </div>
+                {avisos.map(({ aviso, destino }) => (
+                  <FilaAviso key={aviso.id} aviso={aviso} destino={destino} />
                 ))}
               </div>
             )}

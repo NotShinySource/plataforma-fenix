@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { timestampADate } from "@/lib/firebase/converters";
+import { compararAvisos } from "@/lib/avisos";
 import type { Aviso, ConId, LecturaAviso } from "@/types";
 
 const COLECCION = "avisos";
@@ -20,7 +21,11 @@ const COLECCION = "avisos";
 function mapAviso(id: string, data: DocumentData): ConId<Aviso> {
   return {
     id,
-    elencoId: data.elencoId,
+    // Los avisos anteriores a los de la Dirección no tienen estos campos:
+    // todos eran de un grupo y los publicaba su docente.
+    alcance: data.alcance === "escuela" ? "escuela" : "elenco",
+    origen: data.origen === "direccion" ? "direccion" : "profesor",
+    elencoId: data.elencoId ?? null,
     profesorId: data.profesorId,
     titulo: data.titulo,
     contenido: data.contenido,
@@ -37,9 +42,13 @@ interface DatosNuevoAviso {
   urgente: boolean;
 }
 
-/** RF-11 (publicar), lado profesor. */
+/**
+ * RF-11 (publicar), lado profesor. No escribe `alcance` ni `origen`: las
+ * reglas no los aceptan desde el navegador, y al leer se completan como
+ * aviso de grupo publicado por un docente.
+ */
 export async function publicarAviso(datos: DatosNuevoAviso): Promise<string> {
-  const nuevoAviso: WithFieldValue<Aviso> = {
+  const nuevoAviso: WithFieldValue<Omit<Aviso, "alcance" | "origen">> = {
     elencoId: datos.elencoId,
     profesorId: datos.profesorId,
     titulo: datos.titulo,
@@ -62,12 +71,23 @@ export async function listarAvisosPorElenco(elencoId: string): Promise<ConId<Avi
     query(collection(db, COLECCION), where("elencoId", "==", elencoId))
   );
 
+  return snap.docs.map((d) => mapAviso(d.id, d.data())).sort(compararAvisos);
+}
+
+/** Avisos de la Dirección para toda la escuela: los ve cualquier usuario con sesión. */
+export async function listarAvisosDeEscuela(): Promise<ConId<Aviso>[]> {
+  const snap = await getDocs(
+    query(collection(db, COLECCION), where("alcance", "==", "escuela"))
+  );
+  return snap.docs.map((d) => mapAviso(d.id, d.data())).sort(compararAvisos);
+}
+
+/** Todos los avisos, para el panel de la Dirección (las reglas lo permiten solo al Administrador). */
+export async function listarTodosLosAvisos(): Promise<ConId<Aviso>[]> {
+  const snap = await getDocs(collection(db, COLECCION));
   return snap.docs
     .map((d) => mapAviso(d.id, d.data()))
-    .sort((a, b) => {
-      if (a.urgente !== b.urgente) return a.urgente ? -1 : 1;
-      return b.fechaPublicacion.getTime() - a.fechaPublicacion.getTime();
-    });
+    .sort((a, b) => b.fechaPublicacion.getTime() - a.fechaPublicacion.getTime());
 }
 
 /**
