@@ -10,7 +10,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { timestampADate } from "@/lib/firebase/converters";
-import type { Clase, ConId, EstadoSesion, Semestre, SesionClase } from "@/types";
+import type { Clase, ConId, Semestre, SesionClase } from "@/types";
 
 /*
  * Solo lecturas: crear, mover, cancelar, iniciar y finalizar clases pasa por
@@ -120,14 +120,12 @@ export async function listarSesionesDeElencos(
 }
 
 /** Clases ya dictadas (realizadas o incompletas), para el informe a la Corporación. */
-export async function listarSesionesDictadas(): Promise<ConId<SesionClase>[]> {
-  const estados: EstadoSesion[] = ["realizada", "incompleta"];
-  const porEstado = await Promise.all(
-    estados.map((estado) =>
-      getDocs(query(collection(db, COLECCION_SESIONES), where("estado", "==", estado)))
-    )
+export async function listarSesionesDictadas(desde: string, hasta: string): Promise<ConId<SesionClase>[]> {
+  const snap = await getDocs(
+    query(collection(db, COLECCION_SESIONES), where("fecha", ">=", desde), where("fecha", "<=", hasta))
   );
-  return porEstado.flatMap((snap) => snap.docs.map((d) => mapSesion(d.id, d.data())));
+  return snap.docs.map((d) => mapSesion(d.id, d.data()))
+    .filter(({ estado }) => estado === "realizada" || estado === "incompleta");
 }
 
 /** La sesión en tiempo real, para la pantalla de la clase en curso. */

@@ -1,4 +1,5 @@
 import { collection, getDocs, query, where, type DocumentData } from "firebase/firestore";
+import { porcentajeAsistencia } from "@/lib/clases/asistencia";
 import { db } from "@/lib/firebase/client";
 import { timestampADate } from "@/lib/firebase/converters";
 import type { Asistencia, ConId } from "@/types";
@@ -59,22 +60,12 @@ export async function listarObservacionesPorSesion(
   return porAlumno;
 }
 
-/**
- * Asistencia de varias sesiones a la vez, para el informe. Firestore admite
- * hasta 30 valores en un filtro "in", así que se consulta por tandas.
- */
-export async function listarAsistenciasDeSesiones(
-  sesionIds: string[]
-): Promise<ConId<Asistencia>[]> {
-  const tandas: string[][] = [];
-  for (let i = 0; i < sesionIds.length; i += 30) tandas.push(sesionIds.slice(i, i + 30));
-
-  const resultados = await Promise.all(
-    tandas.map((tanda) =>
-      getDocs(query(collection(db, COLECCION), where("sesionId", "in", tanda)))
-    )
+/** Informe de Dirección. Incluye los registros antiguos que no tienen sesionId. */
+export async function listarAsistenciasEnPeriodo(desde: string, hasta: string): Promise<ConId<Asistencia>[]> {
+  const snap = await getDocs(
+    query(collection(db, COLECCION), where("fechaSesion", ">=", desde), where("fechaSesion", "<=", hasta))
   );
-  return resultados.flatMap((snap) => snap.docs.map((d) => mapAsistencia(d.id, d.data())));
+  return snap.docs.map((d) => mapAsistencia(d.id, d.data()));
 }
 
 /** Historial completo de un alumno en un elenco, para calcular % de asistencia (RF-10). */
@@ -94,7 +85,6 @@ export async function listarAsistenciasPorAlumno(
 
 /** % de sesiones registradas como "presente" sobre el total (RF-10). */
 export function calcularPorcentajeAsistencia(asistencias: ConId<Asistencia>[]): number {
-  if (asistencias.length === 0) return 0;
   const presentes = asistencias.filter((a) => a.estado === "presente").length;
-  return Math.round((presentes / asistencias.length) * 100);
+  return porcentajeAsistencia(presentes, asistencias.length);
 }
