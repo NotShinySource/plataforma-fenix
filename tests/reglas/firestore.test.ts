@@ -344,6 +344,45 @@ describe("tareas", () => {
     await assertFails(db("profe").doc("tareas/t2").update({ alumnoId: null }));
     await assertFails(db("profe").doc("tareas/t1").update({ alumnoId: "alumno" }));
   });
+
+  it("las tareas notificables solo pueden declararse al asignarlas", async () => {
+    const nueva = await assertSucceeds(db("profe").collection("tareas").add(tarea({ notificarAsignacion: true })));
+    await assertFails(db("profe").collection("tareas").add(tarea({ notificarAsignacion: "true" })));
+    await assertFails(db("profe").doc("tareas/t1").update({ notificarAsignacion: true }));
+    await assertFails(db("profe").doc(`tareas/${nueva.id}`).update({ notificarAsignacion: false }));
+  });
+
+  it("solo el destinatario puede registrar y consultar sus propias lecturas de tareas", async () => {
+    const nueva = await assertSucceeds(db("profe").collection("tareas").add(tarea({ alumnoId: "alumno", notificarAsignacion: true })));
+    const leida = `usuarios/alumno/tareas_vistas/${nueva.id}`;
+    const fechaLectura = horaServidor();
+    await assertSucceeds(db("alumno").doc(leida).set({ fechaLectura }));
+    await assertSucceeds(db("alumno").doc(leida).set({ fechaLectura }));
+    await assertSucceeds(db("alumno").collection("usuarios/alumno/tareas_vistas").get());
+    await assertFails(db("companero").doc(leida).get());
+    await assertFails(db("companero").doc(leida).set({ fechaLectura }));
+    await assertFails(db("companero").doc(`usuarios/companero/tareas_vistas/${nueva.id}`).set({ fechaLectura }));
+    await assertFails(db("alumno").doc("usuarios/alumno/tareas_vistas/t1").set({ fechaLectura }));
+    await assertFails(db("alumno").doc(leida).set({ fechaLectura, extra: true }));
+    await assertFails(db("alumno").doc(leida).set({ fechaLectura: new Date(0) }));
+  });
+
+  it("cada alumno del elenco puede completar y ver su tarea en la misma operación", async () => {
+    const nueva = await assertSucceeds(db("profe").collection("tareas").add(tarea({ notificarAsignacion: true })));
+    const alumno = db("alumno");
+    const ref = alumno.doc(`tareas/${nueva.id}`);
+    const leida = alumno.doc(`usuarios/alumno/tareas_vistas/${nueva.id}`);
+    const batch = alumno.batch();
+    batch.update(ref, marcar("alumno"));
+    batch.set(leida, { fechaLectura: horaServidor() });
+    await assertSucceeds(batch.commit());
+    expect((await ref.get()).data()?.completadoPor).toEqual(["alumno"]);
+    expect((await leida.get()).exists).toBe(true);
+    const otraLectura = db("companero").doc(`usuarios/companero/tareas_vistas/${nueva.id}`);
+    expect((await otraLectura.get()).exists).toBe(false);
+    await assertSucceeds(otraLectura.set({ fechaLectura: horaServidor() }));
+    await assertFails(db("inactivo").doc(`usuarios/inactivo/tareas_vistas/${nueva.id}`).set({ fechaLectura: horaServidor() }));
+  });
 });
 
 describe("clases", () => {

@@ -8,6 +8,7 @@ import type { ConId, Tarea } from "@/types";
 interface TareaItemProps {
   tarea: ConId<Tarea>;
   completada: boolean;
+  nueva?: boolean;
   /** Vence hoy o ya venció: la fecha se destaca en rojo mientras siga pendiente. */
   urgente: boolean;
   nombreElenco?: string;
@@ -19,6 +20,7 @@ interface TareaItemProps {
 export function TareaItem({
   tarea,
   completada,
+  nueva,
   urgente,
   nombreElenco,
   nombreProfesor,
@@ -61,6 +63,9 @@ export function TareaItem({
         </p>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          {nueva && (
+            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">Nueva</span>
+          )}
           {tarea.alumnoId && (
             <span className="inline-flex items-center gap-1 bg-terracotta/10 text-terracotta px-2.5 py-0.5 rounded-full text-xs font-bold">
               <UserRound className="w-3.5 h-3.5" />

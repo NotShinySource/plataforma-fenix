@@ -31,6 +31,8 @@ export interface Tarea {
   urlAdjunto?: string;
   /** Nombre original del archivo, para mostrarlo en la tarjeta. */
   nombreAdjunto?: string;
+  /** Se activa al asignar una tarea nueva. Las tareas anteriores no generan avisos retroactivos. */
+  notificarAsignacion?: true;
   completadoPor: string[];
   /** Se escribe con serverTimestamp() al marcar, nunca con el reloj del alumno. */
   completadoEn: Record<string, Date>;

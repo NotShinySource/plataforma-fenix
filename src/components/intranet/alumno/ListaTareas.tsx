@@ -14,6 +14,7 @@ interface ListaTareasProps {
   alumnoId: string;
   /** Nombre de cada elenco por ID. Si se omite, no se muestra la etiqueta de elenco. */
   nombresElencos?: Record<string, string>;
+  nuevasIds?: ReadonlySet<string>;
   /** 2 reparte las tarjetas en dos columnas en pantallas anchas; 1 las apila (p. ej. dentro de un modal). */
   columnas?: 1 | 2;
 }
@@ -31,7 +32,7 @@ function compararPendientes(a: ConId<Tarea>, b: ConId<Tarea>): number {
  * checkbox escribe en Firestore; como las tareas llegan por suscripción en
  * tiempo real, la tarjeta cambia de sección sola al confirmarse el cambio.
  */
-export function ListaTareas({ tareas, alumnoId, nombresElencos, columnas = 2 }: ListaTareasProps) {
+export function ListaTareas({ tareas, alumnoId, nombresElencos, nuevasIds, columnas = 2 }: ListaTareasProps) {
   const [nombresProfesores, setNombresProfesores] = useState<Record<string, string>>({});
   const [guardando, setGuardando] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -66,19 +67,21 @@ export function ListaTareas({ tareas, alumnoId, nombresElencos, columnas = 2 }: 
     const hechas = tareas.filter((tarea) => tarea.completadoPor.includes(alumnoId));
     const porHacer = tareas.filter((tarea) => !tarea.completadoPor.includes(alumnoId));
     return {
-      pendientes: porHacer.sort(compararPendientes),
+      pendientes: porHacer.sort((a, b) =>
+        Number(nuevasIds?.has(b.id) ?? false) - Number(nuevasIds?.has(a.id) ?? false) || compararPendientes(a, b)
+      ),
       completadas: hechas.sort(
         (a, b) =>
           (b.completadoEn[alumnoId]?.getTime() ?? 0) - (a.completadoEn[alumnoId]?.getTime() ?? 0)
       ),
     };
-  }, [tareas, alumnoId]);
+  }, [tareas, alumnoId, nuevasIds]);
 
   async function handleAlternar(tarea: ConId<Tarea>, completada: boolean) {
     setGuardando(tarea.id);
     setError(null);
     try {
-      await marcarTarea(tarea.id, alumnoId, completada);
+      await marcarTarea(tarea, alumnoId, completada);
     } catch {
       setError("No se pudo guardar el cambio. Revisa tu conexión e intenta de nuevo.");
     } finally {
@@ -105,6 +108,7 @@ export function ListaTareas({ tareas, alumnoId, nombresElencos, columnas = 2 }: 
         key={tarea.id}
         tarea={tarea}
         completada={completada}
+        nueva={nuevasIds?.has(tarea.id)}
         urgente={
           !completada && tarea.fechaLimite !== undefined && tarea.fechaLimite.getTime() <= finDeHoy
         }
