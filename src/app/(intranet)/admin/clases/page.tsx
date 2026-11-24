@@ -142,7 +142,7 @@ export default function AdminClasesPage() {
       </div>
 
       {error && <EstadoError mensaje={error} />}
-      {!error && !datos && <EstadoCargando texto="Cargando calendario..." />}
+      {!error && !datos && <EstadoCargando texto="Cargando calendario..." variante="bloque" />}
 
       {!error && datos && (
         <>

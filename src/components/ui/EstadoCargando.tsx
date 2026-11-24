@@ -1,12 +1,19 @@
+import { SkeletonBloque, SkeletonLista, SkeletonTarjetas } from "./Skeleton";
+
 interface EstadoCargandoProps {
+  /** Lo lee el lector de pantalla; no se muestra. */
   texto?: string;
+  /** Forma del contenido que se está cargando. */
+  variante?: "lista" | "tarjetas" | "bloque";
 }
 
-export function EstadoCargando({ texto = "Cargando..." }: EstadoCargandoProps) {
+export function EstadoCargando({ texto = "Cargando...", variante = "lista" }: EstadoCargandoProps) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-600">
-      <div className="w-8 h-8 border-2 border-slate-200 border-t-primary rounded-full animate-spin" />
-      <p className="text-sm font-semibold">{texto}</p>
+    <div role="status" aria-live="polite">
+      <span className="sr-only">{texto}</span>
+      {variante === "tarjetas" && <SkeletonTarjetas />}
+      {variante === "lista" && <SkeletonLista />}
+      {variante === "bloque" && <SkeletonBloque />}
     </div>
   );
 }

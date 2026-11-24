@@ -13,11 +13,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { obtenerUsuario } from "@/services/usuarios.service";
+import { usePerfilPropio } from "@/hooks/usePerfilPropio";
 import { EstadoError } from "@/components/ui/EstadoError";
+import { Skeleton, SkeletonLista } from "@/components/ui/Skeleton";
 import { obtenerResumenAdminAction, type ResumenAdmin } from "./actions";
 import { ETIQUETA_ROL } from "@/components/intranet/admin/usuarios/etiquetas";
-import type { ConId, Usuario } from "@/types";
 
 interface TarjetaCifraProps {
   icono: LucideIcon;
@@ -39,7 +39,7 @@ function TarjetaCifra({ icono: Icono, etiqueta, valor, estilo, href }: TarjetaCi
       <div className="min-w-0">
         <p className="text-3xl font-black text-text-dark leading-none tabular-nums">
           {valor === null ? (
-            <span className="inline-block w-10 h-7 bg-slate-100 rounded-lg animate-pulse align-middle" />
+            <Skeleton className="inline-block w-10 h-7 align-middle" />
           ) : (
             valor
           )}
@@ -54,19 +54,13 @@ function TarjetaCifra({ icono: Icono, etiqueta, valor, estilo, href }: TarjetaCi
 
 export default function AdminDashboardPage() {
   const { usuario } = useAuth();
-  const [perfil, setPerfil] = useState<ConId<Usuario> | null>(null);
+  const { perfil, cargando: cargandoPerfil } = usePerfilPropio();
   const [resumen, setResumen] = useState<ResumenAdmin | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!usuario) return;
     let cancelado = false;
-
-    obtenerUsuario(usuario.uid)
-      .then((resultado) => {
-        if (!cancelado) setPerfil(resultado);
-      })
-      .catch(() => undefined);
 
     usuario
       .getIdToken()
@@ -85,14 +79,20 @@ export default function AdminDashboardPage() {
     };
   }, [usuario]);
 
-  const nombrePila = perfil?.nombres.split(" ")[0] ?? "Administrador";
+  const nombrePila = perfil?.nombres.split(" ")[0] ?? null;
 
   return (
     <>
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-3xl rounded-full pointer-events-none" />
         <div className="relative z-10 space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-black text-text-dark">Hola, {nombrePila}</h1>
+          {cargandoPerfil ? (
+            <Skeleton className="h-8 sm:h-9 w-56 max-w-full" />
+          ) : (
+            <h1 className="text-2xl sm:text-3xl font-black text-text-dark">
+              {nombrePila ? `Hola, ${nombrePila}` : "Hola"}
+            </h1>
+          )}
           <p className="text-slate-600 text-sm leading-relaxed max-w-xl font-medium">
             Desde aquí administras las cuentas de la escuela y la conformación de los elencos.
           </p>
@@ -163,7 +163,7 @@ export default function AdminDashboardPage() {
           </div>
 
           {!resumen && !error && (
-            <p className="p-8 text-sm text-slate-600 font-semibold text-center">Cargando...</p>
+            <SkeletonLista filas={3} enmarcada={false} />
           )}
           {resumen && resumen.cuentasPendientes.length === 0 && (
             <div className="p-10 text-center space-y-2">

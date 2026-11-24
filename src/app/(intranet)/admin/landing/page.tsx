@@ -67,7 +67,7 @@ export default function AdminLandingPage() {
       </div>
 
       {error && <EstadoError mensaje={error} />}
-      {!error && !contenido && <EstadoCargando texto="Cargando el contenido del sitio..." />}
+      {!error && !contenido && <EstadoCargando texto="Cargando el contenido del sitio..." variante="bloque" />}
 
       {contenido && (
         <>

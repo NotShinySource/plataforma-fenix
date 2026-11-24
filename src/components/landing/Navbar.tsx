@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
-import { Menu, Music, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 const ENLACES = [
   { label: "Inicio", href: "#inicio" },
@@ -21,31 +22,34 @@ export function Navbar() {
         <div className="flex justify-between items-center h-20">
           <a
             href="#inicio"
+            aria-label="Calambanda, Escuela de Música: volver al inicio"
             className="flex items-center gap-3 cursor-pointer group"
             onClick={(evento) => {
               evento.preventDefault();
               window.scrollTo({ top: 0, behavior: "smooth" });
             }}
           >
-            <div className="bg-primary p-2.5 rounded-xl shadow-md shadow-primary/20 group-hover:scale-105 transition-transform">
-              <Music className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <span className="font-extrabold text-2xl tracking-tighter text-text-dark block leading-none">
-                CALAMBANDA
-              </span>
-              <span className="text-[10px] font-bold tracking-widest text-terracotta block mt-0.5 uppercase">
-                Escuela de Música
-              </span>
-            </div>
+            <Image
+              src="/imagenes/inicio/CALAMABANDA.png"
+              alt="Calambanda"
+              width={1179}
+              height={435}
+              priority
+              className="h-11 sm:h-12 w-auto group-hover:scale-105 transition-transform"
+            />
+            <span className="hidden sm:block md:hidden lg:block border-l border-slate-200 pl-3 text-[10px] font-bold tracking-widest text-terracotta uppercase leading-tight">
+              Escuela
+              <br />
+              de Música
+            </span>
           </a>
 
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-5 lg:gap-8">
             {ENLACES.map((enlace) => (
               <a
                 key={enlace.label}
                 href={enlace.href}
-                className="text-sm font-semibold text-text-dark/80 hover:text-primary transition-colors py-2"
+                className="text-sm font-semibold text-text-dark/80 hover:text-primary transition-colors py-2 whitespace-nowrap"
               >
                 {enlace.label}
               </a>
@@ -55,7 +59,7 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-4">
             <Link
               href="/login"
-              className="bg-primary hover:bg-primary-dark text-white px-6 py-2.5 rounded-xl font-bold text-sm tracking-tight transition-all shadow-md shadow-primary/15 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+              className="bg-primary hover:bg-primary-dark text-white px-5 lg:px-6 py-2.5 rounded-xl font-bold text-sm tracking-tight whitespace-nowrap transition-all shadow-md shadow-primary/15 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
             >
               Ingresar a Intranet
             </Link>

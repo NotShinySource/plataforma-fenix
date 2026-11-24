@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { rolRequeridoParaRuta, RUTA_POR_ROL } from "@/lib/auth/rutas";
+import { SkeletonPagina } from "@/components/ui/Skeleton";
 
 /**
  * Segunda capa, del lado del cliente: proxy.ts ya impide en el servidor que
@@ -39,11 +40,7 @@ export default function IntranetLayout({
     !cargando && usuario && rol && (!rolRequerido || rolRequerido === rol);
 
   if (!sesionValida) {
-    return (
-      <main className="min-h-screen flex items-center justify-center text-slate-600 text-sm font-semibold">
-        Cargando...
-      </main>
-    );
+    return <SkeletonPagina />;
   }
 
   return <>{children}</>;
