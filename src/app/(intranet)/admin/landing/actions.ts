@@ -4,14 +4,23 @@ import { revalidatePath } from "next/cache";
 import { FieldValue } from "firebase-admin/firestore";
 import { dbAdmin, storageAdmin } from "@/lib/firebase/admin";
 import { verificarAdmin } from "@/lib/auth/verificar-admin";
-import { coleccionActuaciones, documentoContenido, leerLanding } from "@/lib/landing/leer";
+import {
+  coleccionActuaciones,
+  coleccionPreguntas,
+  documentoContenido,
+  documentoMarcaPreguntas,
+  leerLanding,
+  leerPreguntas,
+} from "@/lib/landing/leer";
 import { ACTUACIONES_PREDETERMINADAS, CONTENIDO_PREDETERMINADO } from "@/lib/landing/predeterminado";
+import { PREGUNTAS_PREDETERMINADAS } from "@/lib/landing/preguntas-predeterminadas";
+import { LIMITES_PREGUNTAS, validarPregunta } from "@/lib/landing/preguntas";
 import {
   imagenesDescartadas,
   validarActuacion,
   validarContenidoLanding,
 } from "@/lib/landing/validacion";
-import type { ActuacionLanding, ConId, ContenidoLanding, ImagenLanding } from "@/types";
+import type { ActuacionLanding, ConId, ContenidoLanding, ImagenLanding, PreguntaFrecuente } from "@/types";
 
 export type ResultadoLanding = { ok: true } | { ok: false; error: string };
 
@@ -43,6 +52,29 @@ async function asegurarInicializada(): Promise<void> {
   }
 }
 
+/**
+ * La primera vez, copia a Firestore las preguntas frecuentes iniciales. La
+ * marca se crea con create() en el mismo lote: si dos administradores abren
+ * el panel a la vez, solo uno las copia.
+ */
+async function asegurarPreguntasInicializadas(): Promise<void> {
+  if ((await documentoMarcaPreguntas().get()).exists) return;
+
+  const lote = dbAdmin.batch();
+  lote.create(documentoMarcaPreguntas(), { fechaCreacion: FieldValue.serverTimestamp() });
+  for (const pregunta of PREGUNTAS_PREDETERMINADAS) {
+    lote.set(coleccionPreguntas().doc(), {
+      ...pregunta,
+      fechaActualizacion: FieldValue.serverTimestamp(),
+    });
+  }
+  try {
+    await lote.commit();
+  } catch (error) {
+    if (!(await documentoMarcaPreguntas().get()).exists) throw error;
+  }
+}
+
 /** Comprueba que cada imagen de Storage referenciada exista de verdad en la carpeta landing/. */
 async function imagenesExisten(imagenes: ImagenLanding[]): Promise<boolean> {
   const bucket = storageAdmin.bucket();
@@ -67,13 +99,19 @@ async function borrarImagenes(rutas: string[]): Promise<void> {
   );
 }
 
-/** La Landing pública se arma con caché: esto hace que el cambio se vea de inmediato. */
+/** Las páginas públicas se arman con caché: esto hace que el cambio se vea de inmediato. */
 function publicarCambios() {
   revalidatePath("/");
+  revalidatePath("/preguntas-frecuentes");
 }
 
 export type LandingAdminResultado =
-  | { ok: true; contenido: ContenidoLanding; actuaciones: ConId<ActuacionLanding>[] }
+  | {
+      ok: true;
+      contenido: ContenidoLanding;
+      actuaciones: ConId<ActuacionLanding>[];
+      preguntas: ConId<PreguntaFrecuente>[];
+    }
   | { ok: false; error: string };
 
 export async function obtenerLandingAdminAction(idTokenAdmin: string): Promise<LandingAdminResultado> {
@@ -82,8 +120,9 @@ export async function obtenerLandingAdminAction(idTokenAdmin: string): Promise<L
 
   try {
     await asegurarInicializada();
-    const { contenido, actuaciones } = await leerLanding();
-    return { ok: true, contenido, actuaciones };
+    await asegurarPreguntasInicializadas();
+    const { contenido, actuaciones, preguntas } = await leerLanding();
+    return { ok: true, contenido, actuaciones, preguntas };
   } catch (error) {
     console.error("No se pudo cargar la Landing:", error);
     return { ok: false, error: "No se pudo cargar el contenido de la Landing." };
@@ -211,6 +250,117 @@ export async function moverActuacionAction(input: {
     return { ok: true };
   } catch (error) {
     console.error("No se pudo reordenar:", error);
+    return { ok: false, error: "No se pudo cambiar el orden. Intenta de nuevo." };
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Preguntas frecuentes                                                 */
+/* ------------------------------------------------------------------ */
+
+export async function guardarPreguntaAction(input: {
+  idTokenAdmin: string;
+  /** Sin id se crea una pregunta nueva, al final de su categoría. */
+  id?: string;
+  pregunta: unknown;
+}): Promise<ResultadoLanding> {
+  const verificacion = await verificarAdmin(input.idTokenAdmin);
+  if (!verificacion.ok) return verificacion;
+
+  const validacion = validarPregunta(input.pregunta);
+  if (!validacion.ok) return validacion;
+  const datos = validacion.valor;
+
+  try {
+    await asegurarPreguntasInicializadas();
+
+    if (input.id) {
+      const referencia = coleccionPreguntas().doc(String(input.id));
+      if (!(await referencia.get()).exists) return { ok: false, error: "La pregunta ya no existe." };
+      await referencia.update({ ...datos, fechaActualizacion: FieldValue.serverTimestamp() });
+    } else {
+      const existentes = await leerPreguntas();
+      if (existentes.length >= LIMITES_PREGUNTAS.maximoPreguntas) {
+        return { ok: false, error: `Se admiten hasta ${LIMITES_PREGUNTAS.maximoPreguntas} preguntas.` };
+      }
+      // Una pregunta nueva va al final de su categoría; si la categoría es
+      // nueva, al final de la sección. Se renumeran todas para dejarle espacio.
+      const ultimaDeCategoria = existentes.map((p) => p.categoria).lastIndexOf(datos.categoria);
+      const posicion = ultimaDeCategoria === -1 ? existentes.length : ultimaDeCategoria + 1;
+      const nueva = coleccionPreguntas().doc();
+      const ordenados = [...existentes.map((p) => p.id)];
+      ordenados.splice(posicion, 0, nueva.id);
+
+      const lote = dbAdmin.batch();
+      ordenados.forEach((id, i) => {
+        if (id === nueva.id) {
+          lote.set(nueva, { ...datos, orden: i + 1, fechaActualizacion: FieldValue.serverTimestamp() });
+        } else {
+          lote.update(coleccionPreguntas().doc(id), { orden: i + 1 });
+        }
+      });
+      await lote.commit();
+    }
+    publicarCambios();
+    return { ok: true };
+  } catch (error) {
+    console.error("No se pudo guardar la pregunta:", error);
+    return { ok: false, error: "No se pudo guardar la pregunta. Intenta de nuevo." };
+  }
+}
+
+export async function eliminarPreguntaAction(input: {
+  idTokenAdmin: string;
+  id: string;
+}): Promise<ResultadoLanding> {
+  const verificacion = await verificarAdmin(input.idTokenAdmin);
+  if (!verificacion.ok) return verificacion;
+
+  try {
+    const referencia = coleccionPreguntas().doc(String(input.id));
+    if (!(await referencia.get()).exists) return { ok: false, error: "La pregunta ya no existe." };
+    await referencia.delete();
+    publicarCambios();
+    return { ok: true };
+  } catch (error) {
+    console.error("No se pudo eliminar la pregunta:", error);
+    return { ok: false, error: "No se pudo eliminar la pregunta. Intenta de nuevo." };
+  }
+}
+
+/**
+ * Intercambia una pregunta con la anterior (-1) o la siguiente (1) de su
+ * misma categoría. No cruza categorías: así el orden de los grupos no cambia.
+ */
+export async function moverPreguntaAction(input: {
+  idTokenAdmin: string;
+  id: string;
+  direccion: -1 | 1;
+}): Promise<ResultadoLanding> {
+  const verificacion = await verificarAdmin(input.idTokenAdmin);
+  if (!verificacion.ok) return verificacion;
+  if (input.direccion !== -1 && input.direccion !== 1) return { ok: false, error: "Dirección inválida." };
+
+  try {
+    const preguntas = await leerPreguntas();
+    const actual = preguntas.find((p) => p.id === input.id);
+    if (!actual) return { ok: false, error: "La pregunta ya no existe." };
+    const misma = preguntas.filter((p) => p.categoria === actual.categoria);
+    const vecina = misma[misma.indexOf(actual) + input.direccion];
+    if (!vecina) return { ok: true };
+
+    // Se renumeran todas para corregir órdenes repetidos que pudieran existir.
+    const nuevoOrden = preguntas.map((p) => p.id);
+    const a = nuevoOrden.indexOf(actual.id);
+    const b = nuevoOrden.indexOf(vecina.id);
+    [nuevoOrden[a], nuevoOrden[b]] = [vecina.id, actual.id];
+    const lote = dbAdmin.batch();
+    nuevoOrden.forEach((id, i) => lote.update(coleccionPreguntas().doc(id), { orden: i + 1 }));
+    await lote.commit();
+    publicarCambios();
+    return { ok: true };
+  } catch (error) {
+    console.error("No se pudo reordenar la pregunta:", error);
     return { ok: false, error: "No se pudo cambiar el orden. Intenta de nuevo." };
   }
 }

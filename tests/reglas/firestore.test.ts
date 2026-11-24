@@ -348,6 +348,8 @@ describe("solo servidor y colecciones desconocidas", () => {
     await assertFails(anonimo().doc("contenido_landing/general").get());
     await assertFails(db("admin").doc("contenido_landing/general").set({ contenido: {} }));
     await assertFails(db("admin").collection("actuaciones_landing").add({ titulo: "x" }));
+    await assertFails(anonimo().collection("preguntas_landing").get());
+    await assertFails(db("admin").collection("preguntas_landing").add({ pregunta: "x" }));
   });
   it("una colección que no está en las reglas queda denegada", async () => {
     await assertFails(db("admin").collection("cualquier_cosa").add({ a: 1 }));

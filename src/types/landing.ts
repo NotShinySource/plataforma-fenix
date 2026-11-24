@@ -68,3 +68,22 @@ export interface ActuacionLanding {
   /** Un borrador no aparece en la Landing. */
   publicada: boolean;
 }
+
+/**
+ * Colección raíz `preguntas_landing`: la sección de preguntas frecuentes.
+ * Las preguntas se agrupan por `categoria` en el orden en que aparece la
+ * primera de cada una.
+ */
+export interface PreguntaFrecuente {
+  categoria: string;
+  pregunta: string;
+  /**
+   * Texto plano: una línea en blanco separa párrafos y las líneas que
+   * empiezan con "- " forman una lista. No admite HTML.
+   */
+  respuesta: string;
+  /** Posición en la sección: menor primero. */
+  orden: number;
+  /** Un borrador no aparece en la Landing. */
+  publicada: boolean;
+}
