@@ -8,12 +8,14 @@
  * (las incluidas en el sitio o las subidas a la carpeta landing/ de Storage).
  */
 import { esFechaValida } from "@/lib/clases/calendario";
+import { FOTOS_PORTADA_PREDETERMINADAS } from "@/lib/landing/predeterminado";
 import type {
   ActuacionLanding,
   CifraLanding,
   ContenidoLanding,
   EnlaceActuacion,
   ImagenLanding,
+  ImagenPortada,
   PilarLanding,
 } from "@/types";
 
@@ -21,6 +23,8 @@ export const LIMITES_LANDING = {
   etiqueta: 40,
   titulo: 120,
   descripcionPortada: 400,
+  maximoFotosPortada: 8,
+  altFotoPortada: 150,
   parrafo: 800,
   maximoParrafos: 4,
   // Alcanza para un nombre, como "Centro de Arte Ojo del Desierto".
@@ -77,6 +81,30 @@ export function esImagenValida(imagen: unknown): imagen is ImagenLanding {
 function imagen(valor: unknown, campo: string): ImagenLanding {
   if (!esImagenValida(valor)) throw new ErrorValidacion(`${campo}: imagen no válida.`);
   return { url: valor.url, ruta: valor.ruta };
+}
+
+function fotosDePortada(portada: Record<string, unknown>): ImagenPortada[] {
+  // Los documentos existentes guardaban una sola imagen. Consérvala como primera foto.
+  if (portada.imagenes === undefined) {
+    const primera = imagen(portada.imagen, "Foto de la portada");
+    const predeterminada = FOTOS_PORTADA_PREDETERMINADAS.find((foto) => foto.url === primera.url);
+    return [
+      { ...primera, alt: predeterminada?.alt ?? "Fotografía de Calambanda" },
+      ...FOTOS_PORTADA_PREDETERMINADAS.slice(1).filter((foto) => foto.url !== primera.url),
+    ];
+  }
+
+  const fotos = lista(portada.imagenes, "Fotos de la portada", 1, LIMITES_LANDING.maximoFotosPortada);
+  const ids = new Set<string>();
+  return fotos.map((valor, i) => {
+    const campo = `Foto ${i + 1} de la portada`;
+    const foto = imagen(valor, campo);
+    const id = foto.ruta || foto.url;
+    if (ids.has(id)) throw new ErrorValidacion(`${campo}: esa foto ya está en el carrusel.`);
+    ids.add(id);
+    const alt = texto((valor as ImagenPortada).alt ?? "", LIMITES_LANDING.altFotoPortada, `${campo} (descripción)`, true);
+    return alt ? { ...foto, alt } : foto;
+  });
 }
 
 function cifra(valor: unknown, campo: string): CifraLanding {
@@ -149,7 +177,7 @@ export function validarContenidoLanding(entrada: unknown): Resultado<ContenidoLa
           LIMITES_LANDING.descripcionPortada,
           "Descripción de la portada"
         ),
-        imagen: imagen(portada.imagen, "Foto de la portada"),
+        imagenes: fotosDePortada(portada),
         tarjetas: [cifra(tarjetas[0], "Tarjeta 1"), cifra(tarjetas[1], "Tarjeta 2")],
       },
       organizacion: {

@@ -15,6 +15,11 @@ export interface ImagenLanding {
   ruta: string;
 }
 
+export interface ImagenPortada extends ImagenLanding {
+  /** Descripción breve de la foto para lectores de pantalla. */
+  alt?: string;
+}
+
 /** Cifra destacada: "700+" / "Estudiantes activos". */
 export interface CifraLanding {
   valor: string;
@@ -36,7 +41,8 @@ export interface ContenidoLanding {
     etiqueta: string;
     titulo: string;
     descripcion: string;
-    imagen: ImagenLanding;
+    /** La primera imagen se muestra al abrir el sitio. */
+    imagenes: ImagenPortada[];
     /** Las dos tarjetas flotantes sobre la foto. */
     tarjetas: [CifraLanding, CifraLanding];
   };

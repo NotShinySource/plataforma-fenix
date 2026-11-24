@@ -13,6 +13,7 @@ interface BotonSubirImagenProps {
   multiple?: boolean;
   /** Cuántas más se pueden agregar, para no pasarse del máximo de la galería. */
   disponibles?: number;
+  onEstadoSubida?: (subiendo: boolean) => void;
   onSubidas: (imagenes: ImagenLanding[]) => void;
 }
 
@@ -25,16 +26,16 @@ export function BotonSubirImagen({
   etiqueta,
   multiple = false,
   disponibles = Infinity,
+  onEstadoSubida,
   onSubidas,
 }: BotonSubirImagenProps) {
   const entrada = useRef<HTMLInputElement>(null);
   const [subiendo, setSubiendo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function alElegir(archivos: FileList | null) {
-    if (!archivos?.length) return;
+  async function alElegir(lista: File[]) {
+    if (!lista.length) return;
     setError(null);
-    const lista = Array.from(archivos);
 
     if (lista.length > disponibles) {
       setError(`Puedes agregar ${disponibles} ${disponibles === 1 ? "foto más" : "fotos más"}.`);
@@ -49,6 +50,7 @@ export function BotonSubirImagen({
     }
 
     const subidas: ImagenLanding[] = [];
+    onEstadoSubida?.(true);
     try {
       for (const [indice, archivo] of lista.entries()) {
         setSubiendo(lista.length > 1 ? `Subiendo ${indice + 1} de ${lista.length}...` : "Subiendo...");
@@ -58,8 +60,8 @@ export function BotonSubirImagen({
       setError("No se pudo subir la imagen. Revisa tu conexión e intenta de nuevo.");
     } finally {
       setSubiendo(null);
-      if (entrada.current) entrada.current.value = "";
       if (subidas.length) onSubidas(subidas);
+      onEstadoSubida?.(false);
     }
   }
 
@@ -79,7 +81,11 @@ export function BotonSubirImagen({
         type="file"
         accept={ACCEPT_IMAGEN_LANDING}
         multiple={multiple}
-        onChange={(evento) => alElegir(evento.target.files)}
+        onChange={(evento) => {
+          const archivos = Array.from(evento.currentTarget.files ?? []);
+          evento.currentTarget.value = "";
+          void alElegir(archivos);
+        }}
         className="hidden"
         aria-label={etiqueta}
       />

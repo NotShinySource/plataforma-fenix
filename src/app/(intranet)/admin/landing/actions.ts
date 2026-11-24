@@ -11,6 +11,7 @@ import {
   documentoMarcaPreguntas,
   leerLanding,
   leerPreguntas,
+  versionDeContenido,
 } from "@/lib/landing/leer";
 import { ACTUACIONES_PREDETERMINADAS, CONTENIDO_PREDETERMINADO } from "@/lib/landing/predeterminado";
 import { PREGUNTAS_PREDETERMINADAS } from "@/lib/landing/preguntas-predeterminadas";
@@ -109,6 +110,7 @@ export type LandingAdminResultado =
   | {
       ok: true;
       contenido: ContenidoLanding;
+      versionContenido: string;
       actuaciones: ConId<ActuacionLanding>[];
       preguntas: ConId<PreguntaFrecuente>[];
     }
@@ -121,8 +123,8 @@ export async function obtenerLandingAdminAction(idTokenAdmin: string): Promise<L
   try {
     await asegurarInicializada();
     await asegurarPreguntasInicializadas();
-    const { contenido, actuaciones, preguntas } = await leerLanding();
-    return { ok: true, contenido, actuaciones, preguntas };
+    const { contenido, versionContenido, actuaciones, preguntas } = await leerLanding();
+    return { ok: true, contenido, versionContenido, actuaciones, preguntas };
   } catch (error) {
     console.error("No se pudo cargar la Landing:", error);
     return { ok: false, error: "No se pudo cargar el contenido de la Landing." };
@@ -132,26 +134,42 @@ export async function obtenerLandingAdminAction(idTokenAdmin: string): Promise<L
 export async function guardarContenidoLandingAction(input: {
   idTokenAdmin: string;
   contenido: unknown;
-}): Promise<ResultadoLanding> {
+  versionContenido: string;
+}): Promise<{ ok: true; versionContenido: string } | { ok: false; error: string }> {
   const verificacion = await verificarAdmin(input.idTokenAdmin);
   if (!verificacion.ok) return verificacion;
 
   const validacion = validarContenidoLanding(input.contenido);
   if (!validacion.ok) return validacion;
   const contenido = validacion.valor;
+  const mensajeVersion = "Alguien guardó cambios en el sitio. Recarga esta página antes de volver a editar.";
 
   try {
-    if (!(await imagenesExisten([contenido.portada.imagen]))) {
-      return { ok: false, error: "La foto de la portada no se encontró. Súbela de nuevo." };
+    if (!(await imagenesExisten(contenido.portada.imagenes))) {
+      return { ok: false, error: "Alguna foto de la portada no se encontró. Vuelve a subirla." };
     }
     await asegurarInicializada();
-    const anterior = (await documentoContenido().get()).data()?.contenido as ContenidoLanding;
+    const documento = documentoContenido();
+    const anterior = await documento.get();
+    if (!anterior.updateTime || versionDeContenido(anterior.updateTime) !== input.versionContenido) {
+      return { ok: false, error: mensajeVersion };
+    }
+    const contenidoAnterior = validarContenidoLanding(anterior.data()?.contenido);
+    if (!contenidoAnterior.ok) return contenidoAnterior;
 
-    await documentoContenido().set({ contenido, fechaActualizacion: FieldValue.serverTimestamp() });
-    await borrarImagenes(imagenesDescartadas([anterior.portada.imagen], [contenido.portada.imagen]));
+    const resultado = await documento.update({
+      // Las versiones anteriores del sitio todavía leen la primera foto en `imagen`.
+      contenido: { ...contenido, portada: { ...contenido.portada, imagen: contenido.portada.imagenes[0] } },
+      fechaActualizacion: FieldValue.serverTimestamp(),
+    }, { lastUpdateTime: anterior.updateTime });
     publicarCambios();
-    return { ok: true };
+    await borrarImagenes(imagenesDescartadas(contenidoAnterior.valor.portada.imagenes, contenido.portada.imagenes)
+      .filter((ruta) => ruta.startsWith("landing/portada/")));
+    return { ok: true, versionContenido: versionDeContenido(resultado.writeTime) };
   } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === 9) {
+      return { ok: false, error: mensajeVersion };
+    }
     console.error("No se pudo guardar el contenido de la Landing:", error);
     return { ok: false, error: "No se pudo guardar. Intenta de nuevo." };
   }
