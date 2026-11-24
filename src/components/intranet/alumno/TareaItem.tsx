@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Check, Download, FileText, UserRound } from "lucide-react";
+import { CalendarDays, Check, Download, FileText, ImageIcon, UserRound } from "lucide-react";
 import { formatearFechaCorta } from "@/lib/format";
 import { ReproductorAudio } from "@/components/intranet/shared/ReproductorAudio";
 import type { ConId, Tarea } from "@/types";
@@ -27,6 +27,8 @@ export function TareaItem({
   guardando,
   onAlternar,
 }: TareaItemProps) {
+  const esFoto = tarea.tipoAdjunto === "JPEG";
+  const IconoAdjunto = esFoto ? ImageIcon : FileText;
   return (
     <div
       className={`bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 flex items-start gap-3 transition-opacity ${
@@ -98,23 +100,23 @@ export function TareaItem({
           <ReproductorAudio url={tarea.urlAdjunto} nombre={tarea.nombreAdjunto ?? "Audio"} />
         )}
 
-        {!completada && tarea.urlAdjunto && tarea.tipoAdjunto === "PDF" && (
+        {!completada && tarea.urlAdjunto && (tarea.tipoAdjunto === "PDF" || esFoto) && (
           <a
             href={tarea.urlAdjunto}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3 bg-slate-50 hover:bg-primary/5 border border-slate-100 rounded-2xl p-3 transition-colors group"
           >
-            <span className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0">
-              <FileText className="w-5 h-5" />
+            <span className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${esFoto ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"}`}>
+              <IconoAdjunto className="w-5 h-5" />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-xs font-bold text-text-dark truncate">
-                {tarea.nombreAdjunto ?? "Documento PDF"}
+                {tarea.nombreAdjunto ?? (esFoto ? "Foto JPEG" : "Documento PDF")}
               </span>
-              <span className="block text-xs font-semibold text-slate-600">Toca para abrir</span>
+              <span className="block text-xs font-semibold text-slate-600">{esFoto ? "Abrir foto" : "Toca para abrir"}</span>
             </span>
-            <Download className="w-4 h-4 text-slate-500 group-hover:text-primary flex-shrink-0" />
+            {!esFoto && <Download className="w-4 h-4 text-slate-500 group-hover:text-primary flex-shrink-0" />}
           </a>
         )}
       </div>

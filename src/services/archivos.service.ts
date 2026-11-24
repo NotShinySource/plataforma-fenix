@@ -13,6 +13,7 @@ import {
 import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/lib/firebase/client";
 import { timestampADate } from "@/lib/firebase/converters";
+import { validarArchivoMaterial, validarContenidoJpeg } from "@/lib/validacion";
 import type { Archivo, ConId, TipoArchivo } from "@/types";
 
 const COLECCION = "archivos";
@@ -62,26 +63,32 @@ interface DatosSubidaArchivo {
 
 /** Sube el binario a Storage y crea el documento en Firestore (RF-05/RF-07). */
 export async function subirArchivo(datos: DatosSubidaArchivo): Promise<string> {
+  const problema = validarArchivoMaterial(datos.archivo, datos.tipo);
+  if (problema) throw new Error(problema);
+  const esJpeg = datos.tipo === "jpeg";
+  if (esJpeg) await validarContenidoJpeg(datos.archivo);
+
   const rutaStorage = `elencos/${datos.elencoId}/${datos.tipo}/${Date.now()}_${datos.archivo.name}`;
   const referenciaStorage = ref(storage, rutaStorage);
 
-  await uploadBytes(referenciaStorage, datos.archivo);
-  const urlStorage = await getDownloadURL(referenciaStorage);
-
-  const nuevoArchivo: WithFieldValue<Archivo> = {
-    elencoId: datos.elencoId,
-    profesorId: datos.profesorId,
-    tipo: datos.tipo,
-    categoria: datos.categoria,
-    titulo: datos.titulo,
-    nombreArchivo: datos.archivo.name,
-    urlStorage,
-    tamanioBytes: datos.archivo.size,
-    fechaSubida: serverTimestamp(),
-  };
-
-  const docRef = await addDoc(collection(db, COLECCION), nuevoArchivo);
-  return docRef.id;
+  await uploadBytes(referenciaStorage, datos.archivo, esJpeg ? { contentType: "image/jpeg" } : undefined);
+  try {
+    const nuevoArchivo: WithFieldValue<Archivo> = {
+      elencoId: datos.elencoId,
+      profesorId: datos.profesorId,
+      tipo: datos.tipo,
+      categoria: datos.categoria,
+      titulo: datos.titulo,
+      nombreArchivo: datos.archivo.name,
+      urlStorage: await getDownloadURL(referenciaStorage),
+      tamanioBytes: datos.archivo.size,
+      fechaSubida: serverTimestamp(),
+    };
+    return (await addDoc(collection(db, COLECCION), nuevoArchivo)).id;
+  } catch (error) {
+    await deleteObject(referenciaStorage).catch(() => undefined);
+    throw error;
+  }
 }
 
 export async function eliminarArchivo(archivoId: string, urlStorage: string): Promise<void> {

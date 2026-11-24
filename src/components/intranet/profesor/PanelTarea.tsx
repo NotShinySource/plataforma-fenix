@@ -2,11 +2,12 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { motion } from "motion/react";
-import { AudioLines, FileText, Paperclip, X } from "lucide-react";
+import { AudioLines, FileText, ImageIcon, Paperclip, X } from "lucide-react";
 import { actualizarTarea, crearTarea } from "@/services/tareas.service";
 import { fechaAValorInput, valorInputAFinDeDia } from "@/lib/format";
 import {
   ACCEPT_ADJUNTO,
+  ERROR_CONTENIDO_JPEG,
   LONGITUD_MAXIMA_TITULO_TAREA,
   validarAdjunto,
 } from "@/lib/validacion";
@@ -33,7 +34,12 @@ interface PanelTareaProps {
   onCerrar: () => void;
 }
 
-const ICONO_ADJUNTO = { Ninguno: null, PDF: FileText, Audio: AudioLines } as const;
+const ICONO_ADJUNTO = { Ninguno: null, PDF: FileText, Audio: AudioLines, JPEG: ImageIcon } as const;
+const AYUDA_ADJUNTO = {
+  PDF: "Archivo .pdf de hasta 25 MB.",
+  Audio: "Archivo .mp3 o .wav de hasta 50 MB.",
+  JPEG: "Foto .jpg o .jpeg de hasta 25 MB.",
+} as const;
 
 /** Panel lateral desplegable para asignar una tarea nueva o editar una existente. */
 export function PanelTarea({
@@ -122,7 +128,7 @@ export function PanelTarea({
       return;
     }
     if (!editando && tipoAdjunto !== "Ninguno" && !archivo) {
-      setError(`Selecciona el archivo ${tipoAdjunto === "PDF" ? "PDF" : "de audio"} a adjuntar.`);
+      setError("Selecciona el archivo que quieres adjuntar.");
       return;
     }
 
@@ -145,12 +151,9 @@ export function PanelTarea({
         });
       }
       onCerrar();
-    } catch {
-      setError(
-        editando
-          ? "No se pudo guardar la tarea. Intenta de nuevo."
-          : "No se pudo asignar la tarea. Intenta de nuevo."
-      );
+    } catch (error) {
+      const mensaje = editando ? "No se pudo guardar la tarea. Intenta de nuevo." : "No se pudo asignar la tarea. Intenta de nuevo.";
+      setError(error instanceof Error && error.message === ERROR_CONTENIDO_JPEG ? ERROR_CONTENIDO_JPEG : mensaje);
       setGuardando(false);
     }
   }
@@ -296,7 +299,7 @@ export function PanelTarea({
                   <Paperclip className="w-4 h-4" />
                   Material adjunto <span className="font-medium text-slate-500">(Opcional)</span>
                 </p>
-                <div role="radiogroup" aria-label="Material adjunto" className="grid grid-cols-3 gap-2">
+                <div role="radiogroup" aria-label="Material adjunto" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {TIPOS_ADJUNTO_TAREA.map((tipo) => {
                     const Icono = ICONO_ADJUNTO[tipo];
                     const activo = tipoAdjunto === tipo;
@@ -315,7 +318,7 @@ export function PanelTarea({
                         }`}
                       >
                         {Icono && <Icono className="w-4 h-4" />}
-                        {tipo}
+                        {tipo === "JPEG" ? "Foto JPEG" : tipo}
                       </button>
                     );
                   })}
@@ -334,9 +337,7 @@ export function PanelTarea({
                       className="w-full text-sm font-medium text-slate-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
                     />
                     <p className="text-xs font-semibold text-slate-600 mt-1.5">
-                      {tipoAdjunto === "PDF"
-                        ? "Archivo .pdf de hasta 25 MB."
-                        : "Archivo .mp3 o .wav de hasta 50 MB."}
+                      {AYUDA_ADJUNTO[tipoAdjunto]}
                     </p>
                   </div>
                 )}

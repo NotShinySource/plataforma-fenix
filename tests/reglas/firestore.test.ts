@@ -151,6 +151,13 @@ describe("archivos (material)", () => {
   it("el docente del elenco sube material válido", async () => {
     await assertSucceeds(db("profe").collection("archivos").add(nuevo()));
   });
+  it("registra una foto JPEG dentro del límite y con extensión válida", async () => {
+    const material = db("profe").collection("archivos");
+    const foto = { tipo: "jpeg", nombreArchivo: "partitura.JPEG", urlStorage: "https://ejemplo/partitura.JPEG" };
+    await assertSucceeds(material.add(nuevo(foto)));
+    await assertFails(material.add(nuevo({ ...foto, nombreArchivo: "partitura.pdf" })));
+    await assertFails(material.add(nuevo({ ...foto, tamanioBytes: 25 * 1024 * 1024 + 1 })));
+  });
   it("se rechaza material de alumnos, de otro elenco o a nombre de otro docente", async () => {
     await assertFails(db("alumno").collection("archivos").add(nuevo({ profesorId: "alumno" })));
     await assertFails(db("profe2").collection("archivos").add(nuevo({ profesorId: "profe2" })));
@@ -291,6 +298,15 @@ describe("tareas", () => {
     await assertFails(db("profe").collection("tareas").add(tarea({ completadoPor: ["alumno"] })));
     await assertFails(db("profe2").collection("tareas").add(tarea({ profesorId: "profe2" })));
     await assertFails(db("alumno").collection("tareas").add(tarea({ profesorId: "alumno" })));
+  });
+  it("una tarea admite una foto JPEG con nombre y enlace de adjunto", async () => {
+    const tareas = db("profe").collection("tareas");
+    const foto = { tipoAdjunto: "JPEG", nombreAdjunto: "ejercicio.jpg", urlAdjunto: "https://ejemplo/ejercicio.jpg" };
+    const individual = await assertSucceeds(tareas.add(tarea({ ...foto, alumnoId: "alumno" })));
+    await assertSucceeds(db("alumno").doc(`tareas/${individual.id}`).get());
+    await assertFails(db("companero").doc(`tareas/${individual.id}`).get());
+    await assertFails(tareas.add(tarea({ tipoAdjunto: "JPEG", nombreAdjunto: "ejercicio.jpg" })));
+    await assertFails(tareas.add(tarea({ ...foto, nombreAdjunto: "ejercicio.png" })));
   });
   it("el alumno marca solo su propio avance, y solo en tareas de su elenco", async () => {
     await assertSucceeds(db("alumno").doc("tareas/t1").update(marcar("alumno")));

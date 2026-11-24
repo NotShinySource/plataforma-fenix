@@ -1,4 +1,4 @@
-export type TipoArchivo = "pdf" | "mp3" | "wav";
+export type TipoArchivo = "pdf" | "mp3" | "wav" | "jpeg";
 
 export interface Archivo {
   elencoId: string;

@@ -160,12 +160,16 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           'elencoId', 'profesorId', 'tipo', 'categoria', 'titulo',
           'nombreArchivo', 'urlStorage', 'tamanioBytes', 'fechaSubida'])
-        && request.resource.data.tipo in ['pdf', 'mp3', 'wav']
+        && request.resource.data.tipo in ['pdf', 'mp3', 'wav', 'jpeg']
         && textoValido(request.resource.data.titulo, 150)
         && textoValido(request.resource.data.categoria, 60)
         && textoValido(request.resource.data.nombreArchivo, 255)
         && request.resource.data.urlStorage is string
         && request.resource.data.tamanioBytes is int
+        && (request.resource.data.tipo != 'jpeg'
+          || (request.resource.data.nombreArchivo.matches('(?i).+[.]jpe?g')
+            && request.resource.data.tamanioBytes > 0
+            && request.resource.data.tamanioBytes <= 25 * 1024 * 1024))
         && esHoraDelServidor(request.resource.data.fechaSubida);
 
       // Lo elimina quien lo subió, mientras siga siendo docente del elenco.
@@ -288,7 +292,11 @@ service cloud.firestore {
         && (request.resource.data.alumnoId == null
           || esAlumnoActivoDe(request.resource.data.elencoId, request.resource.data.alumnoId))
         && textoValido(request.resource.data.titulo, 120)
-        && request.resource.data.tipoAdjunto in ['Ninguno', 'PDF', 'Audio']
+        && request.resource.data.tipoAdjunto in ['Ninguno', 'PDF', 'Audio', 'JPEG']
+        && (request.resource.data.tipoAdjunto != 'JPEG'
+          || (textoValido(request.resource.data.nombreAdjunto, 255)
+            && request.resource.data.nombreAdjunto.matches('(?i).+[.]jpe?g')
+            && textoValido(request.resource.data.urlAdjunto, 2048)))
         && request.resource.data.completadoPor.size() == 0
         && request.resource.data.completadoEn.size() == 0
         && esHoraDelServidor(request.resource.data.fechaCreacion);

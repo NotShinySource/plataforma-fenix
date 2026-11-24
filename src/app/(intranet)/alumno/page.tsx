@@ -30,7 +30,7 @@ export default function AlumnoDashboardPage() {
           )}
           <p className="text-slate-600 text-sm leading-relaxed max-w-xl font-medium">
             Bienvenido a tu panel de estudio personal. Aquí podrás acceder a todas las
-            partituras y audios de referencia autorizados por tus docentes de Calambanda.
+            partituras, audios y fotos de referencia publicados por tus docentes de Calambanda.
           </p>
         </div>
 

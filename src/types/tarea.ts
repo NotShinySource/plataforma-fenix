@@ -1,4 +1,4 @@
-export const TIPOS_ADJUNTO_TAREA = ["Ninguno", "PDF", "Audio"] as const;
+export const TIPOS_ADJUNTO_TAREA = ["Ninguno", "PDF", "Audio", "JPEG"] as const;
 
 export type TipoAdjuntoTarea = (typeof TIPOS_ADJUNTO_TAREA)[number];
 

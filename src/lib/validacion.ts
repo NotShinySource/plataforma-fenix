@@ -46,30 +46,42 @@ export const LONGITUD_MAXIMA_TITULO_AVISO = 150;
 export const LONGITUD_MAXIMA_CONTENIDO_AVISO = 5000;
 
 const MEGABYTE = 1024 * 1024;
+const LIMITE_JPEG = { extensiones: [".jpg", ".jpeg"], maximoBytes: 25 * MEGABYTE, etiqueta: "archivo de imagen .jpg o .jpeg de hasta 25 MB" };
+const ACCEPT_JPEG = ".jpg,.jpeg,image/jpeg";
+export const ERROR_CONTENIDO_JPEG = "La foto no es un archivo JPEG válido. Elige una imagen .jpg o .jpeg.";
 
 /**
  * Formatos y tamaños máximos del material de estudio (restricciones R2 y R4).
  * storage.rules exige lo mismo: esto solo da el aviso antes de subir.
  */
 const LIMITES_MATERIAL = {
-  pdf: { extension: ".pdf", maximoBytes: 25 * MEGABYTE, etiqueta: "PDF de hasta 25 MB" },
-  mp3: { extension: ".mp3", maximoBytes: 50 * MEGABYTE, etiqueta: "audio .mp3 de hasta 50 MB" },
-  wav: { extension: ".wav", maximoBytes: 50 * MEGABYTE, etiqueta: "audio .wav de hasta 50 MB" },
+  pdf: { extensiones: [".pdf"], maximoBytes: 25 * MEGABYTE, etiqueta: "PDF de hasta 25 MB" },
+  mp3: { extensiones: [".mp3"], maximoBytes: 50 * MEGABYTE, etiqueta: "audio .mp3 de hasta 50 MB" },
+  wav: { extensiones: [".wav"], maximoBytes: 50 * MEGABYTE, etiqueta: "audio .wav de hasta 50 MB" },
+  jpeg: LIMITE_JPEG,
 } as const;
 
 export const ACCEPT_MATERIAL = {
   pdf: ".pdf,application/pdf",
   mp3: ".mp3,audio/mpeg",
   wav: ".wav,audio/wav,audio/x-wav",
+  jpeg: ACCEPT_JPEG,
 } as const;
 
-/** Devuelve el mensaje de error, o null si el archivo es aceptable. */
-export function validarArchivoMaterial(archivo: File, tipo: keyof typeof LIMITES_MATERIAL): string | null {
-  const limite = LIMITES_MATERIAL[tipo];
-  if (!archivo.name.toLowerCase().endsWith(limite.extension) || archivo.size > limite.maximoBytes) {
+function validarFormatoArchivo(
+  archivo: File,
+  limite: { extensiones: readonly string[]; maximoBytes: number; etiqueta: string },
+): string | null {
+  const nombre = archivo.name.toLowerCase();
+  if (!limite.extensiones.some((extension) => nombre.endsWith(extension)) || archivo.size > limite.maximoBytes) {
     return `El archivo debe ser un ${limite.etiqueta}.`;
   }
   return null;
+}
+
+/** Devuelve el mensaje de error, o null si el archivo es aceptable. */
+export function validarArchivoMaterial(archivo: File, tipo: keyof typeof LIMITES_MATERIAL): string | null {
+  return validarFormatoArchivo(archivo, LIMITES_MATERIAL[tipo]);
 }
 
 /** Formatos y tamaños máximos admitidos para el material adjunto de una tarea. */
@@ -80,23 +92,26 @@ const LIMITES_ADJUNTO = {
     maximoBytes: 50 * MEGABYTE,
     etiqueta: "audio .mp3 o .wav de hasta 50 MB",
   },
+  JPEG: LIMITE_JPEG,
 } as const;
 
 export const ACCEPT_ADJUNTO = {
   PDF: ".pdf,application/pdf",
   Audio: ".mp3,.wav,audio/mpeg,audio/wav",
+  JPEG: ACCEPT_JPEG,
 } as const;
 
 /** Devuelve el mensaje de error, o null si el archivo es aceptable. */
-export function validarAdjunto(archivo: File, tipo: "PDF" | "Audio"): string | null {
-  const limite = LIMITES_ADJUNTO[tipo];
-  const nombre = archivo.name.toLowerCase();
-  const formatoValido = limite.extensiones.some((extension) => nombre.endsWith(extension));
+export function validarAdjunto(archivo: File, tipo: keyof typeof LIMITES_ADJUNTO): string | null {
+  return validarFormatoArchivo(archivo, LIMITES_ADJUNTO[tipo]);
+}
 
-  if (!formatoValido || archivo.size > limite.maximoBytes) {
-    return `El archivo debe ser un ${limite.etiqueta}.`;
+/** Comprueba la firma binaria JPEG, incluso cuando el navegador omite el MIME. */
+export async function validarContenidoJpeg(archivo: Blob): Promise<void> {
+  const firma = new Uint8Array(await archivo.slice(0, 3).arrayBuffer());
+  if (firma[0] !== 0xff || firma[1] !== 0xd8 || firma[2] !== 0xff) {
+    throw new Error(ERROR_CONTENIDO_JPEG);
   }
-  return null;
 }
 
 /** Imágenes de la Landing (restricciones R2 y R4). storage.rules exige lo mismo. */

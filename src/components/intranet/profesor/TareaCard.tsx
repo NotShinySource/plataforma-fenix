@@ -3,6 +3,7 @@ import {
   CalendarDays,
   Download,
   FileText,
+  ImageIcon,
   Pencil,
   Trash2,
   UserRound,
@@ -37,6 +38,8 @@ export function TareaCard({
   onEditar,
   onEliminar,
 }: TareaCardProps) {
+  const esFoto = tarea.tipoAdjunto === "JPEG";
+  const IconoAdjunto = esFoto ? ImageIcon : FileText;
   const individual = tarea.alumnoId !== null;
   const destinatario = individual
     ? alumnosDelElenco?.find((alumno) => alumno.id === tarea.alumnoId)
@@ -76,12 +79,12 @@ export function TareaCard({
           )}
           {tarea.tipoAdjunto !== "Ninguno" && (
             <span className="inline-flex items-center gap-1.5 border border-slate-200 text-slate-600 px-2.5 py-1 rounded-full text-xs font-bold">
-              {tarea.tipoAdjunto === "PDF" ? (
-                <FileText className="w-3.5 h-3.5" />
-              ) : (
+              {tarea.tipoAdjunto === "Audio" ? (
                 <AudioLines className="w-3.5 h-3.5" />
+              ) : (
+                <IconoAdjunto className="w-3.5 h-3.5" />
               )}
-              {tarea.tipoAdjunto}
+              {esFoto ? "Foto JPEG" : tarea.tipoAdjunto}
             </span>
           )}
         </div>
@@ -120,20 +123,20 @@ export function TareaCard({
         <ReproductorAudio url={tarea.urlAdjunto} nombre={tarea.nombreAdjunto ?? "Audio"} />
       )}
 
-      {tarea.urlAdjunto && tarea.tipoAdjunto === "PDF" && (
+      {tarea.urlAdjunto && (tarea.tipoAdjunto === "PDF" || esFoto) && (
         <a
           href={tarea.urlAdjunto}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-3 bg-slate-50 hover:bg-primary/5 border border-slate-100 rounded-2xl p-3 transition-colors group"
         >
-          <span className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0">
-            <FileText className="w-5 h-5" />
+          <span className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${esFoto ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"}`}>
+            <IconoAdjunto className="w-5 h-5" />
           </span>
           <span className="min-w-0 flex-1 text-xs font-bold text-text-dark truncate">
-            {tarea.nombreAdjunto ?? "Documento PDF"}
+            {esFoto ? "Abrir foto" : (tarea.nombreAdjunto ?? "Documento PDF")}
           </span>
-          <Download className="w-4 h-4 text-slate-500 group-hover:text-primary flex-shrink-0" />
+          {!esFoto && <Download className="w-4 h-4 text-slate-500 group-hover:text-primary flex-shrink-0" />}
         </a>
       )}
 

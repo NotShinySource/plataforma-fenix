@@ -5,8 +5,8 @@ rules_version = '2';
 //
 // Las imágenes públicas de la Landing viven en landing/{portada|actuaciones}/.
 // Los archivos de un elenco viven en elencos/{elencoId}/{carpeta}/{archivo}:
-//   - pdf, mp3, wav: material de estudio;
-//   - tareas: adjunto de una tarea (PDF o audio).
+//   - pdf, mp3, wav, jpeg: material de estudio;
+//   - tareas: adjunto de una tarea (PDF, audio o foto JPEG).
 // Pertenencia y rol se comprueban contra Firestore (miembros_elenco), igual
 // que en firestore.rules. Tamaño y formato se validan aquí, en el servidor,
 // aunque el formulario ya los revise antes de subir.
@@ -69,11 +69,19 @@ service firebase.storage {
         && request.resource.size <= megabytes(50);
     }
 
-    function formatoPermitido(carpeta) {
+    function esJpeg(archivo) {
+      return request.resource.contentType == 'image/jpeg'
+        && archivo.matches('(?i).+[.]jpe?g')
+        && request.resource.size > 0
+        && request.resource.size <= megabytes(25);
+    }
+
+    function formatoPermitido(carpeta, archivo) {
       return (carpeta == 'pdf' && esPdf())
         || (carpeta == 'mp3' && esMp3())
         || (carpeta == 'wav' && esWav())
-        || (carpeta == 'tareas' && (esPdf() || esMp3() || esWav()));
+        || (carpeta == 'jpeg' && esJpeg(archivo))
+        || (carpeta == 'tareas' && (esPdf() || esMp3() || esWav() || esJpeg(archivo)));
     }
 
     match /elencos/{elencoId}/{carpeta}/{archivo} {
@@ -84,7 +92,7 @@ service firebase.storage {
       allow create: if resource == null
         && esProfesorDelElenco(elencoId)
         && grupoActivo(elencoId)
-        && formatoPermitido(carpeta);
+        && formatoPermitido(carpeta, archivo);
       allow delete: if esProfesorDelElenco(elencoId);
       allow update: if false;
     }
