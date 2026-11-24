@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+
+export const metadata: Metadata = {
+  robots: { index: false },
+};
 
 // Las pantallas de acceso usan la misma tipografía que la Landing (Plus
 // Jakarta Sans): son la continuación visual del sitio público, a diferencia
