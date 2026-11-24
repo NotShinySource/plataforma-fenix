@@ -1,13 +1,18 @@
 import "server-only";
-import type { DocumentData } from "firebase-admin/firestore";
+import type { DocumentData, Timestamp } from "firebase-admin/firestore";
 import { dbAdmin } from "@/lib/firebase/admin";
 import { ACTUACIONES_PREDETERMINADAS, CONTENIDO_PREDETERMINADO } from "@/lib/landing/predeterminado";
 import { PREGUNTAS_PREDETERMINADAS } from "@/lib/landing/preguntas-predeterminadas";
+import { validarContenidoLanding } from "@/lib/landing/validacion";
 import type { ActuacionLanding, ConId, ContenidoLanding, PreguntaFrecuente } from "@/types";
 
 export const coleccionActuaciones = () => dbAdmin.collection("actuaciones_landing");
 export const documentoContenido = () => dbAdmin.collection("contenido_landing").doc("general");
 export const coleccionPreguntas = () => dbAdmin.collection("preguntas_landing");
+
+export function versionDeContenido(ultimaEscritura?: Timestamp): string {
+  return ultimaEscritura ? `${ultimaEscritura.seconds}.${ultimaEscritura.nanoseconds}` : "";
+}
 /**
  * Marca de que las preguntas ya se copiaron a Firestore. Es aparte del
  * contenido general porque la sección llegó después: en un sitio ya
@@ -18,6 +23,7 @@ export const documentoMarcaPreguntas = () => dbAdmin.collection("contenido_landi
 
 export interface Landing {
   contenido: ContenidoLanding;
+  versionContenido: string;
   actuaciones: ConId<ActuacionLanding>[];
   preguntas: ConId<PreguntaFrecuente>[];
   /** false mientras el Administrador no haya abierto el panel: se usa el contenido predeterminado. */
@@ -34,6 +40,7 @@ function preguntasPredeterminadas(): ConId<PreguntaFrecuente>[] {
 function predeterminada(): Landing {
   return {
     contenido: CONTENIDO_PREDETERMINADO,
+    versionContenido: "",
     actuaciones: ACTUACIONES_PREDETERMINADAS.map((actuacion, i) => ({
       ...actuacion,
       id: `predeterminada-${i + 1}`,
@@ -86,9 +93,12 @@ export async function leerLanding(): Promise<Landing> {
     leerPreguntas(),
   ]);
   if (!general.exists) return { ...predeterminada(), preguntas };
+  const contenido = validarContenidoLanding(general.data()?.contenido);
+  if (!contenido.ok) throw new Error(contenido.error);
 
   return {
-    contenido: general.data()!.contenido as ContenidoLanding,
+    contenido: contenido.valor,
+    versionContenido: versionDeContenido(general.updateTime),
     actuaciones: actuaciones.docs
       .map((d) => mapActuacion(d.id, d.data()))
       .sort((a, b) => a.orden - b.orden),

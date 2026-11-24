@@ -51,6 +51,43 @@ describe("esImagenValida", () => {
 });
 
 describe("validarContenidoLanding", () => {
+  it("usa la foto guardada como primera cuando la portada todavía tiene el formato anterior", () => {
+    const { portada, organizacion } = CONTENIDO_PREDETERMINADO;
+    const { imagenes, ...camposPortada } = portada;
+    const imagen = subida("landing/portada/foto-anterior.jpg");
+    const resultado = validarContenidoLanding({ portada: { ...camposPortada, imagen }, organizacion });
+    expect(resultado).toMatchObject({
+      ok: true,
+      valor: { portada: { imagenes: [{ ...imagen, alt: "Fotografía de Calambanda" }, ...imagenes.slice(1)] } },
+    });
+  });
+
+  it("conserva el orden elegido y limpia las descripciones de la portada", () => {
+    const entrada = structuredClone(CONTENIDO_PREDETERMINADO);
+    const primera = { ...subida("landing/portada/primera.jpg"), alt: "  Ensayo abierto  " };
+    const segunda = { ...subida("landing/portada/segunda.jpg"), alt: "  " };
+    entrada.portada.imagenes = [segunda, primera];
+    const resultado = validarContenidoLanding(entrada);
+    if (!resultado.ok) throw new Error(resultado.error);
+    expect(resultado.valor.portada.imagenes).toEqual([
+      subida("landing/portada/segunda.jpg"),
+      { ...primera, alt: "Ensayo abierto" },
+    ]);
+  });
+
+  it("rechaza portadas sin fotos, repetidas, demasiado numerosas o externas", () => {
+    const entrada = structuredClone(CONTENIDO_PREDETERMINADO);
+    const imagenesInvalidas = [
+      [],
+      [entrada.portada.imagenes[0], entrada.portada.imagenes[0]],
+      Array.from({ length: 9 }, (_, i) => subida(`landing/portada/${i}.jpg`)),
+      [{ ruta: "", url: "https://ejemplo.cl/externa.jpg" }],
+    ];
+    for (const imagenes of imagenesInvalidas) {
+      expect(validarContenidoLanding({ ...entrada, portada: { ...entrada.portada, imagenes } }).ok).toBe(false);
+    }
+  });
+
   it("recorta espacios y descarta campos que no existen", () => {
     const entrada = structuredClone(CONTENIDO_PREDETERMINADO) as unknown as Record<string, Record<string, unknown>>;
     entrada.portada.titulo = "  Título con espacios  ";

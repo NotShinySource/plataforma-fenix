@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { motion } from "motion/react";
 import { BookOpen, ChevronRight, Users } from "lucide-react";
-import Image from "next/image";
-import { sinOptimizar } from "@/lib/landing/imagen";
 import type { ContenidoLanding } from "@/types";
+import { CarruselPortada } from "./CarruselPortada";
 import { TextoDestacado } from "./TextoDestacado";
 
 export function Hero({ portada }: { portada: ContenidoLanding["portada"] }) {
@@ -64,17 +63,7 @@ export function Hero({ portada }: { portada: ContenidoLanding["portada"] }) {
               <div className="absolute -inset-4 bg-gradient-to-tr from-primary/10 via-terracotta/10 to-primary-light/10 blur-2xl opacity-60 rounded-[40px] group-hover:scale-105 transition-transform duration-500" />
 
               <div className="relative bg-white p-4 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/50">
-                <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-inner">
-                  <Image
-                    src={portada.imagen.url}
-                    alt="Elencos de Calambanda en concierto"
-                    fill
-                    preload
-                    unoptimized={sinOptimizar(portada.imagen.url)}
-                    sizes="(min-width: 1024px) 40vw, 100vw"
-                    className="object-cover"
-                  />
-                </div>
+                <CarruselPortada fotos={portada.imagenes} />
 
                 <div className="absolute -bottom-6 -left-6 bg-white p-4 rounded-2xl shadow-xl border border-slate-50 flex items-center gap-3">
                   <div className="bg-terracotta/10 p-2.5 rounded-xl text-terracotta">

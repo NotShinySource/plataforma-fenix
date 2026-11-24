@@ -16,7 +16,7 @@ import type { ActuacionLanding, ConId, ContenidoLanding, PreguntaFrecuente } fro
  * y preguntas frecuentes. La sección de Escuelas y el pie de página siguen fijos.
  */
 export default function AdminLandingPage() {
-  const [contenido, setContenido] = useState<ContenidoLanding | null>(null);
+  const [edicion, setEdicion] = useState<{ contenido: ContenidoLanding; versionContenido: string } | null>(null);
   const [actuaciones, setActuaciones] = useState<ConId<ActuacionLanding>[]>([]);
   const [preguntas, setPreguntas] = useState<ConId<PreguntaFrecuente>[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +35,7 @@ export default function AdminLandingPage() {
           setError(resultado.error);
           return;
         }
-        setContenido((actual) => actual ?? resultado.contenido);
+        setEdicion((actual) => actual ?? { contenido: resultado.contenido, versionContenido: resultado.versionContenido });
         setActuaciones(resultado.actuaciones);
         setPreguntas(resultado.preguntas);
       } catch {
@@ -70,11 +70,11 @@ export default function AdminLandingPage() {
       </div>
 
       {error && <EstadoError mensaje={error} />}
-      {!error && !contenido && <EstadoCargando texto="Cargando el contenido del sitio..." variante="bloque" />}
+      {!error && !edicion && <EstadoCargando texto="Cargando el contenido del sitio..." variante="bloque" />}
 
-      {contenido && (
+      {edicion && (
         <>
-          <FormularioContenido inicial={contenido} />
+          <FormularioContenido inicial={edicion.contenido} versionInicial={edicion.versionContenido} />
           <ListaActuaciones actuaciones={actuaciones} onCambio={() => setVersion((v) => v + 1)} />
           <ListaPreguntas preguntas={preguntas} onCambio={() => setVersion((v) => v + 1)} />
         </>

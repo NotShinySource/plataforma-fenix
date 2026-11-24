@@ -1,4 +1,4 @@
-import type { ActuacionLanding, ContenidoLanding, ImagenLanding } from "@/types";
+import type { ActuacionLanding, ContenidoLanding, ImagenLanding, ImagenPortada } from "@/types";
 
 /**
  * Contenido de la Landing antes de que el Administrador la edite. Se muestra
@@ -13,13 +13,19 @@ function local(url: string): ImagenLanding {
   return { url, ruta: "" };
 }
 
+export const FOTOS_PORTADA_PREDETERMINADAS: ImagenPortada[] = [
+  { ...local("/imagenes/inicio/principal.jpg"), alt: "Elencos de Calambanda en concierto" },
+  { ...local("/imagenes/actuaciones/coco/CocoBanda.jpg"), alt: "Banda de Calambanda en la presentación de Coco un poco loco" },
+  { ...local("/imagenes/actuaciones/Cecilia/Cecilia2.jpg"), alt: "Público del Concierto Santa Cecilia en el Parque José Saavedra" },
+];
+
 export const CONTENIDO_PREDETERMINADO: ContenidoLanding = {
   portada: {
     etiqueta: "Música para el Futuro",
     titulo: "El impacto del arte en la *comunidad* loína",
     descripcion:
       "Transformamos vidas a través de la educación musical gratuita y de excelencia. Fomentando el compañerismo, la disciplina y el rescate cultural en Calama.",
-    imagen: local("/imagenes/inicio/principal.jpg"),
+    imagenes: FOTOS_PORTADA_PREDETERMINADAS,
     tarjetas: [
       { valor: "700+", etiqueta: "Estudiantes activos" },
       { valor: "Matrícula 100%", etiqueta: "Gratuita" },

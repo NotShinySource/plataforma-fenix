@@ -1,15 +1,14 @@
 "use client";
 
 import { useState, type FormEvent, type ReactNode } from "react";
-import Image from "next/image";
 import { CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
-import { sinOptimizar } from "@/lib/landing/imagen";
 import { LIMITES_LANDING } from "@/lib/landing/validacion";
 import { CLASE_AREA_TEXTO, CLASE_BOTON_PRIMARIO, CLASE_CAMPO, CLASE_ERROR, CLASE_ETIQUETA } from "@/components/ui/estilos";
 import { guardarContenidoLandingAction } from "@/app/(intranet)/admin/landing/actions";
+import { descartarImagenSubida } from "@/services/landing.service";
 import type { CifraLanding, ContenidoLanding } from "@/types";
-import { BotonSubirImagen } from "./BotonSubirImagen";
+import { FotosPortada } from "./FotosPortada";
 
 function Campo({ id, etiqueta, ayuda, children }: { id: string; etiqueta: string; ayuda?: string; children: ReactNode }) {
   return (
@@ -23,12 +22,12 @@ function Campo({ id, etiqueta, ayuda, children }: { id: string; etiqueta: string
   );
 }
 
-function Tarjeta({ titulo, children }: { titulo: string; children: ReactNode }) {
+function Tarjeta({ titulo, bloqueada, children }: { titulo: string; bloqueada: boolean; children: ReactNode }) {
   return (
-    <section className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8 space-y-5">
+    <fieldset disabled={bloqueada} aria-label={titulo} className="min-w-0 bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8 space-y-5">
       <h2 className="text-lg font-extrabold text-text-dark">{titulo}</h2>
       {children}
-    </section>
+    </fieldset>
   );
 }
 
@@ -36,11 +35,15 @@ const AYUDA_DESTACADO = "Lo que escribas entre asteriscos se destaca. Ejemplo: e
 
 interface FormularioContenidoProps {
   inicial: ContenidoLanding;
+  versionInicial: string;
 }
 
 /** Portada y "Nuestra Organización" de la Landing. Se guardan juntas. */
-export function FormularioContenido({ inicial }: FormularioContenidoProps) {
+export function FormularioContenido({ inicial, versionInicial }: FormularioContenidoProps) {
   const [contenido, setContenido] = useState(inicial);
+  const [versionContenido, setVersionContenido] = useState(versionInicial);
+  const [rutasPublicadas, setRutasPublicadas] = useState(() => new Set(inicial.portada.imagenes.map((foto) => foto.ruta)));
+  const [subiendoFotos, setSubiendoFotos] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guardado, setGuardado] = useState(false);
@@ -78,16 +81,18 @@ export function FormularioContenido({ inicial }: FormularioContenidoProps) {
 
   async function handleSubmit(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
-    if (!auth.currentUser) return;
+    if (!auth.currentUser || guardando || subiendoFotos) return;
     setGuardando(true);
     setError(null);
     try {
       const idTokenAdmin = await auth.currentUser.getIdToken();
-      const resultado = await guardarContenidoLandingAction({ idTokenAdmin, contenido });
+      const resultado = await guardarContenidoLandingAction({ idTokenAdmin, contenido, versionContenido });
       if (!resultado.ok) {
         setError(resultado.error);
         return;
       }
+      setVersionContenido(resultado.versionContenido);
+      setRutasPublicadas(new Set(contenido.portada.imagenes.map((foto) => foto.ruta)));
       setGuardado(true);
     } catch {
       setError("No se pudo guardar. Revisa tu conexión e intenta de nuevo.");
@@ -100,8 +105,8 @@ export function FormularioContenido({ inicial }: FormularioContenidoProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <Tarjeta titulo="Portada">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
+      <Tarjeta titulo="Portada" bloqueada={guardando}>
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6">
           <div className="space-y-4">
             <Campo id="portada-etiqueta" etiqueta="Etiqueta superior">
               <input
@@ -145,28 +150,17 @@ export function FormularioContenido({ inicial }: FormularioContenidoProps) {
             </div>
           </div>
 
-          <div className="space-y-3">
-            <span className={CLASE_ETIQUETA}>Foto</span>
-            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 border border-slate-100">
-              <Image
-                src={portada.imagen.url}
-                alt="Foto actual de la portada"
-                fill
-                sizes="280px"
-                unoptimized={sinOptimizar(portada.imagen.url)}
-                className="object-cover"
-              />
-            </div>
-            <BotonSubirImagen
-              carpeta="portada"
-              etiqueta="Cambiar foto"
-              onSubidas={([imagen]) => cambiar((c) => void (c.portada.imagen = imagen))}
-            />
-          </div>
+          <FotosPortada
+            fotos={portada.imagenes}
+            onCambio={(fotos) => cambiar((c) => void (c.portada.imagenes = fotos))}
+            onAgregar={(subidas) => cambiar((c) => void c.portada.imagenes.push(...subidas))}
+            onQuitar={(foto) => { if (!rutasPublicadas.has(foto.ruta)) void descartarImagenSubida(foto); }}
+            onEstadoSubida={setSubiendoFotos}
+          />
         </div>
       </Tarjeta>
 
-      <Tarjeta titulo="Nuestra Organización">
+      <Tarjeta titulo="Nuestra Organización" bloqueada={guardando}>
         <Campo id="organizacion-titulo" etiqueta="Título" ayuda={AYUDA_DESTACADO}>
           <input
             id="organizacion-titulo"
@@ -250,7 +244,7 @@ export function FormularioContenido({ inicial }: FormularioContenidoProps) {
       </Tarjeta>
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sticky bottom-4">
-        <button type="submit" disabled={guardando} className={`${CLASE_BOTON_PRIMARIO} sm:flex-none sm:px-8 shadow-lg shadow-primary/25`}>
+        <button type="submit" disabled={guardando || subiendoFotos} className={`${CLASE_BOTON_PRIMARIO} sm:flex-none sm:px-8 shadow-lg shadow-primary/25`}>
           {guardando ? "Guardando..." : "Guardar portada y organización"}
         </button>
         {guardado && (
