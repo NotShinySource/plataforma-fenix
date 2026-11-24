@@ -5,6 +5,7 @@ import {
   normalizarEmail,
   validarAdjunto,
   validarArchivoMaterial,
+  validarContenidoJpeg,
 } from "@/lib/validacion";
 
 const MEGABYTE = 1024 * 1024;
@@ -76,5 +77,25 @@ describe("validarArchivoMaterial", () => {
     expect(validarArchivoMaterial(archivo("score.pdf", 25 * MEGABYTE + 1), "pdf")).not.toBeNull();
     expect(validarArchivoMaterial(archivo("pista.wav", 1000), "mp3")).not.toBeNull();
     expect(validarArchivoMaterial(archivo("score.musx", 1000), "pdf")).not.toBeNull();
+  });
+});
+
+describe("fotos JPEG de material y tareas", () => {
+  it("acepta las extensiones JPG y JPEG hasta 25 MB en ambos formularios", () => {
+    for (const nombre of ["ensayo.jpg", "ejercicio.JPEG"]) {
+      const foto = archivo(nombre, 25 * MEGABYTE);
+      expect(validarArchivoMaterial(foto, "jpeg")).toBeNull();
+      expect(validarAdjunto(foto, "JPEG")).toBeNull();
+    }
+    for (const invalido of [archivo("foto.heic", 1000), archivo("foto.jpeg", 25 * MEGABYTE + 1)]) {
+      expect(validarArchivoMaterial(invalido, "jpeg")).not.toBeNull();
+      expect(validarAdjunto(invalido, "JPEG")).not.toBeNull();
+    }
+  });
+
+  it("comprueba la firma binaria aunque el archivo no declare un tipo MIME", async () => {
+    const jpeg = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])]);
+    await expect(validarContenidoJpeg(jpeg)).resolves.toBeUndefined();
+    await expect(validarContenidoJpeg(new Blob(["texto renombrado"]))).rejects.toThrow("JPEG válido");
   });
 });

@@ -8,6 +8,7 @@ let entorno: RulesTestEnvironment;
 const MEGABYTE = 1024 * 1024;
 const PDF = { contentType: "application/pdf" };
 const MP3 = { contentType: "audio/mpeg" };
+const JPEG = { contentType: "image/jpeg" };
 
 beforeAll(async () => {
   entorno = await crearEntorno();
@@ -57,6 +58,22 @@ describe("subida de material", () => {
   it("un adjunto de tarea puede ser PDF o audio", async () => {
     await assertSucceeds(subir("profe", "elencos/e1/tareas/guia.pdf", bytes(1000), PDF));
     await assertSucceeds(subir("profe", "elencos/e1/tareas/pista.mp3", bytes(1000), MP3));
+  });
+  it("permite fotos JPG y JPEG en material y tareas para docentes del elenco", async () => {
+    const material = "elencos/e1/jpeg/ejercicio.JPG";
+    const adjunto = "elencos/e1/tareas/partitura.jpeg";
+    await assertSucceeds(subir("profe", material, bytes(1000), JPEG));
+    await assertSucceeds(subir("profe", adjunto, bytes(1000), JPEG));
+    await assertSucceeds(ref("alumno", material).getMetadata());
+    await assertSucceeds(ref("alumno", adjunto).getMetadata());
+    await assertFails(ref("ajeno", material).getMetadata());
+    await assertFails(subir("alumno", "elencos/e1/jpeg/propia.jpg", bytes(1000), JPEG));
+    await assertFails(subir("profe", "elencos/e3/tareas/archivada.jpg", bytes(1000), JPEG));
+  });
+  it("rechaza una foto con tipo, extensión o tamaño fuera de los límites", async () => {
+    await assertFails(subir("profe", "elencos/e1/jpeg/foto.png", bytes(1000), JPEG));
+    await assertFails(subir("profe", "elencos/e1/tareas/foto.jpg", bytes(1000), { contentType: "image/png" }));
+    await assertFails(subir("profe", "elencos/e1/jpeg/grande.jpeg", bytes(25 * MEGABYTE + 1), JPEG));
   });
   it("un archivo subido no se reemplaza", async () => {
     await assertFails(subir("profe", "elencos/e1/pdf/existente.pdf", bytes(20), PDF));

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Trash2, Volume2 } from "lucide-react";
+import { FileText, ImageIcon, Trash2, Volume2 } from "lucide-react";
 import { formatearFecha, formatearTamanioArchivo } from "@/lib/format";
 import { eliminarArchivo } from "@/services/archivos.service";
 import type { Archivo, ConId } from "@/types";
@@ -14,6 +14,8 @@ interface ArchivoRowProps {
 export function ArchivoRow({ archivo, onEliminado }: ArchivoRowProps) {
   const [eliminando, setEliminando] = useState(false);
   const esAudio = archivo.tipo === "mp3" || archivo.tipo === "wav";
+  const esFoto = archivo.tipo === "jpeg";
+  const Icono = esAudio ? Volume2 : esFoto ? ImageIcon : FileText;
 
   async function handleEliminar() {
     if (!confirm(`¿Eliminar "${archivo.titulo}"? Esta acción no se puede deshacer.`)) return;
@@ -32,10 +34,10 @@ export function ArchivoRow({ archivo, onEliminado }: ArchivoRowProps) {
       <div className="flex items-center gap-3 min-w-0">
         <div
           className={`p-2.5 rounded-xl flex-shrink-0 ${
-            esAudio ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"
+            esAudio || esFoto ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"
           }`}
         >
-          {esAudio ? <Volume2 className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+          <Icono className="w-5 h-5" />
         </div>
         <div className="min-w-0">
           <h4 className="font-bold text-text-dark text-sm truncate">{archivo.titulo}</h4>
@@ -48,15 +50,27 @@ export function ArchivoRow({ archivo, onEliminado }: ArchivoRowProps) {
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={handleEliminar}
-        disabled={eliminando}
-        className="p-2.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50 flex-shrink-0"
-        aria-label={`Eliminar ${archivo.titulo}`}
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
+      <div className="flex shrink-0 items-center gap-2">
+        {esFoto && (
+          <a
+            href={archivo.urlStorage}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-xl px-3 py-2 text-xs font-bold text-primary hover:bg-primary/10"
+          >
+            Abrir foto
+          </a>
+        )}
+        <button
+          type="button"
+          onClick={handleEliminar}
+          disabled={eliminando}
+          className="p-2.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
+          aria-label={`Eliminar ${archivo.titulo}`}
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }

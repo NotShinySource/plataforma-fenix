@@ -35,7 +35,7 @@ import {
   type WithFieldValue,
 } from "firebase-admin/firestore";
 import { getDownloadURL, getStorage } from "firebase-admin/storage";
-import type { Tarea, TipoAdjuntoTarea } from "../src/types/tarea";
+import type { Tarea } from "../src/types/tarea";
 
 const PREFIJO_ID = "seed-tarea-";
 const COLECCION = "tareas";
@@ -144,7 +144,7 @@ interface PlantillaTarea {
   titulo: string;
   /** Días desde hoy hasta la fecha límite; null = sin fecha límite. */
   diasParaVencer: number | null;
-  tipoAdjunto: TipoAdjuntoTarea;
+  tipoAdjunto: "Ninguno" | keyof typeof ADJUNTOS;
 }
 
 const PLANTILLAS: PlantillaTarea[] = [

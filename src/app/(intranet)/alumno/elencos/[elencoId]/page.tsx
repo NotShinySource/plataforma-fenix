@@ -17,7 +17,7 @@ import type { Archivo, ConId, Elenco, TipoArchivo } from "@/types";
 
 type FiltroTipo = "todos" | TipoArchivo;
 
-const OPCIONES_FILTRO: FiltroTipo[] = ["todos", "pdf", "mp3", "wav"];
+const OPCIONES_FILTRO: FiltroTipo[] = ["todos", "pdf", "mp3", "wav", "jpeg"];
 
 export default function AlumnoElencoPage() {
   const { elencoId } = useParams<{ elencoId: string }>();
@@ -137,7 +137,7 @@ export default function AlumnoElencoPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-            <div className="flex bg-slate-50 border border-slate-100 rounded-xl p-1 gap-1">
+            <div className="flex flex-wrap bg-slate-50 border border-slate-100 rounded-xl p-1 gap-1">
               {OPCIONES_FILTRO.map((opcion) => (
                 <button
                   key={opcion}
@@ -149,7 +149,7 @@ export default function AlumnoElencoPage() {
                       : "text-slate-600 hover:text-primary"
                   }`}
                 >
-                  {opcion}
+                  {opcion === "jpeg" ? "Fotos" : opcion}
                 </button>
               ))}
             </div>

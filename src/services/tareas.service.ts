@@ -20,6 +20,7 @@ import {
 import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/lib/firebase/client";
 import { timestampADate, type TimestampDeCualquierSdk } from "@/lib/firebase/converters";
+import { validarAdjunto, validarContenidoJpeg } from "@/lib/validacion";
 import type { ConId, Tarea, TipoAdjuntoTarea } from "@/types";
 
 const COLECCION = "tareas";
@@ -124,36 +125,42 @@ interface DatosNuevaTarea {
 
 /** Sube el adjunto (si hay) a la carpeta del elenco en Storage y crea la tarea. */
 export async function crearTarea(datos: DatosNuevaTarea): Promise<string> {
-  let adjunto: { urlAdjunto: string; nombreAdjunto: string } | null = null;
-
-  if (datos.tipoAdjunto !== "Ninguno" && datos.archivo) {
-    const referencia = ref(
-      storage,
-      `elencos/${datos.elencoId}/tareas/${Date.now()}_${datos.archivo.name}`
-    );
-    await uploadBytes(referencia, datos.archivo);
-    adjunto = {
-      urlAdjunto: await getDownloadURL(referencia),
-      nombreAdjunto: datos.archivo.name,
-    };
-  }
-
+  const { archivo, tipoAdjunto } = datos;
   const nuevaTarea: WithFieldValue<Tarea> = {
     titulo: datos.titulo,
     elencoId: datos.elencoId,
     profesorId: datos.profesorId,
     alumnoId: datos.alumnoId,
-    tipoAdjunto: adjunto ? datos.tipoAdjunto : "Ninguno",
+    tipoAdjunto,
     completadoPor: [],
     completadoEn: {},
     notificarAsignacion: true,
     fechaCreacion: serverTimestamp(),
     ...(datos.fechaLimite ? { fechaLimite: datos.fechaLimite } : {}),
-    ...(adjunto ?? {}),
   };
 
-  const docRef = await addDoc(collection(db, COLECCION), nuevaTarea);
-  return docRef.id;
+  if (tipoAdjunto === "Ninguno") {
+    return (await addDoc(collection(db, COLECCION), nuevaTarea)).id;
+  }
+  if (!archivo) throw new Error("Selecciona el archivo que quieres adjuntar.");
+  const problema = validarAdjunto(archivo, tipoAdjunto);
+  if (problema) throw new Error(problema);
+  const esJpeg = tipoAdjunto === "JPEG";
+  if (esJpeg) await validarContenidoJpeg(archivo);
+
+  const referencia = ref(storage, `elencos/${datos.elencoId}/tareas/${Date.now()}_${archivo.name}`);
+  await uploadBytes(referencia, archivo, esJpeg ? { contentType: "image/jpeg" } : undefined);
+  try {
+    const docRef = await addDoc(collection(db, COLECCION), {
+      ...nuevaTarea,
+      urlAdjunto: await getDownloadURL(referencia),
+      nombreAdjunto: archivo.name,
+    });
+    return docRef.id;
+  } catch (error) {
+    await deleteObject(referencia).catch(() => undefined);
+    throw error;
+  }
 }
 
 /** Solo título y fecha límite: el elenco, el destinatario y el adjunto no cambian una vez asignada. */

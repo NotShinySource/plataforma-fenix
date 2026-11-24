@@ -16,6 +16,7 @@ import type { Archivo, ConId, Elenco, TipoArchivo } from "@/types";
 import { CLASE_CAMPO, CLASE_ERROR } from "@/components/ui/estilos";
 import {
   ACCEPT_MATERIAL,
+  ERROR_CONTENIDO_JPEG,
   LONGITUD_MAXIMA_CATEGORIA_MATERIAL,
   LONGITUD_MAXIMA_TITULO_MATERIAL,
   validarArchivoMaterial,
@@ -106,8 +107,10 @@ export default function ProfesorMaterialPage() {
       setTipo("pdf");
       setArchivoSeleccionado(null);
       setInputFileKey((clave) => clave + 1);
-    } catch {
-      setErrorSubida("No se pudo subir el archivo. Intenta de nuevo.");
+    } catch (error) {
+      setErrorSubida(error instanceof Error && error.message === ERROR_CONTENIDO_JPEG
+        ? ERROR_CONTENIDO_JPEG
+        : "No se pudo subir el archivo. Intenta de nuevo.");
     } finally {
       setSubiendo(false);
     }
@@ -206,6 +209,7 @@ export default function ProfesorMaterialPage() {
               <option value="pdf">PDF</option>
               <option value="mp3">MP3</option>
               <option value="wav">WAV</option>
+              <option value="jpeg">Foto JPEG</option>
             </select>
           </div>
 
@@ -213,7 +217,7 @@ export default function ProfesorMaterialPage() {
             <label htmlFor="archivo" className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               Archivo{" "}
               <span className="normal-case font-semibold text-slate-600">
-                (PDF hasta 25 MB · MP3 o WAV hasta 50 MB)
+                (PDF o foto JPG/JPEG hasta 25 MB · MP3 o WAV hasta 50 MB)
               </span>
             </label>
             <input

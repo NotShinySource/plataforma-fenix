@@ -1,4 +1,4 @@
-import { Download, FileText, Volume2 } from "lucide-react";
+import { Download, FileText, ImageIcon, Volume2 } from "lucide-react";
 import { formatearFecha, formatearTamanioArchivo } from "@/lib/format";
 import type { Archivo, ConId } from "@/types";
 
@@ -8,16 +8,18 @@ interface ArchivoItemProps {
 
 export function ArchivoItem({ archivo }: ArchivoItemProps) {
   const esAudio = archivo.tipo === "mp3" || archivo.tipo === "wav";
+  const esFoto = archivo.tipo === "jpeg";
+  const Icono = esAudio ? Volume2 : esFoto ? ImageIcon : FileText;
 
   return (
     <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:bg-slate-50/40 transition-colors">
       <div className="flex items-start gap-4">
         <div
           className={`p-3.5 rounded-2xl flex-shrink-0 ${
-            esAudio ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"
+            esAudio || esFoto ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"
           }`}
         >
-          {esAudio ? <Volume2 className="w-6 h-6" /> : <FileText className="w-6 h-6" />}
+          <Icono className="w-6 h-6" />
         </div>
         <div>
           <h4 className="font-bold text-text-dark leading-snug">{archivo.titulo}</h4>
@@ -56,8 +58,8 @@ export function ArchivoItem({ archivo }: ArchivoItemProps) {
             rel="noopener noreferrer"
             className="bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-xl font-bold text-xs tracking-tight transition-all shadow-md flex items-center gap-2"
           >
-            <Download className="w-4 h-4" />
-            <span>Descargar PDF</span>
+            {esFoto ? <ImageIcon className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+            <span>{esFoto ? "Abrir foto" : "Descargar PDF"}</span>
           </a>
         )}
       </div>
