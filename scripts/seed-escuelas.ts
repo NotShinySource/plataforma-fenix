@@ -36,7 +36,7 @@ const ESCUELAS: Array<Pick<Escuela, "nombre" | "tipo" | "niveles">> = [
 async function main(): Promise<void> {
   const { db, destino } = conectar();
   const simular = process.argv.includes("--simular");
-  console.log(`${simular ? "Simulando la creación" : "Creando"} de escuelas en ${destino}...\n`);
+  console.log(`${simular ? "Simulando la creación de escuelas" : "Creando escuelas"} en ${destino}...\n`);
 
   const existentes = new Set(
     (await db.collection("escuelas").get()).docs.map((d) => claveComparacion(String(d.data().nombre ?? "")))
