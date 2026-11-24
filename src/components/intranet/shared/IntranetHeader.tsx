@@ -10,6 +10,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 interface ItemNav {
   href: string;
   label: string;
+  contador?: number;
+  etiquetaContador?: string;
 }
 
 interface IntranetHeaderProps {
@@ -60,13 +62,14 @@ export function IntranetHeader({ nav }: IntranetHeaderProps) {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-label={item.etiquetaContador ? `${item.label}, ${item.etiquetaContador}` : undefined}
                 className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
                   estaActivo(item.href)
                     ? "bg-primary/10 text-primary"
                     : "text-slate-600 hover:bg-slate-50"
                 }`}
               >
-                {item.label}
+                <EtiquetaNav item={item} />
               </Link>
             ))}
           </nav>
@@ -85,17 +88,31 @@ export function IntranetHeader({ nav }: IntranetHeaderProps) {
             <Link
               key={item.href}
               href={item.href}
+              aria-label={item.etiquetaContador ? `${item.label}, ${item.etiquetaContador}` : undefined}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
                 estaActivo(item.href)
                   ? "bg-primary/10 text-primary"
                   : "text-slate-600 hover:bg-slate-50"
               }`}
             >
-              {item.label}
+              <EtiquetaNav item={item} />
             </Link>
           ))}
         </nav>
       </div>
     </header>
+  );
+}
+
+function EtiquetaNav({ item }: { item: ItemNav }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {item.label}
+      {Boolean(item.contador) && (
+        <span aria-hidden="true" className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-white tabular-nums">
+          {item.contador}
+        </span>
+      )}
+    </span>
   );
 }

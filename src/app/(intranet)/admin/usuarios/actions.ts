@@ -458,11 +458,13 @@ export async function generarEnlaceAccesoAction(
 
 /**
  * Borra la cuenta de Auth (con sus custom claims), usuarios/{uid},
- * datos_privados/{uid}, solicitudes_acceso/{uid} y sus membresías. NO borra
+ * datos_privados/{uid}, solicitudes_acceso/{uid}, sus membresías y sus lecturas de tareas. NO borra
  * asistencias ni archivos: quedan como registro histórico. Quien la llama ya
  * verificó que el que pide es administrador y que el objetivo no lo es.
  */
 async function borrarCuenta(uid: string): Promise<void> {
+  const usuarioRef = dbAdmin.collection("usuarios").doc(uid);
+  await dbAdmin.recursiveDelete(usuarioRef.collection("tareas_vistas"));
   // Revocar antes de borrar: una vez borrada la cuenta, revokeRefreshTokens
   // fallaría con auth/user-not-found.
   await authAdmin.revokeRefreshTokens(uid);
@@ -474,7 +476,7 @@ async function borrarCuenta(uid: string): Promise<void> {
     .get();
 
   const batch = dbAdmin.batch();
-  batch.delete(dbAdmin.collection("usuarios").doc(uid));
+  batch.delete(usuarioRef);
   batch.delete(dbAdmin.collection("datos_privados").doc(uid));
   batch.delete(dbAdmin.collection("solicitudes_acceso").doc(uid));
   membresiasSnap.docs.forEach((membresiaDoc) => batch.delete(membresiaDoc.ref));

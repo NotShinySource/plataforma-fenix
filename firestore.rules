@@ -102,6 +102,25 @@ service cloud.firestore {
       allow get: if autenticado();
       allow list: if esAdmin();
       allow write: if false;
+
+      match /tareas_vistas/{tareaId} {
+        function esAlumnoPropio() {
+          return esPropio(uid) && request.auth.token.rol == 'alumno';
+        }
+
+        function tieneAvisoAsignado() {
+          let tarea = get(/databases/$(database)/documents/tareas/$(tareaId)).data;
+          return tarea.get('notificarAsignacion', false) == true
+            && esAlumnoDelElenco(tarea.elencoId)
+            && (tarea.alumnoId == null || tarea.alumnoId == uid);
+        }
+
+        allow read: if esAlumnoPropio();
+        allow create, update: if esAlumnoPropio() && tieneAvisoAsignado()
+          && request.resource.data.keys().hasOnly(['fechaLectura'])
+          && esHoraDelServidor(request.resource.data.fechaLectura);
+        allow delete: if false;
+      }
     }
 
     // ----------------------------------------------- Elencos y membresías
@@ -263,7 +282,8 @@ service cloud.firestore {
         && request.resource.data.profesorId == request.auth.uid
         && request.resource.data.keys().hasOnly([
           'titulo', 'elencoId', 'profesorId', 'alumnoId', 'fechaLimite', 'tipoAdjunto',
-          'urlAdjunto', 'nombreAdjunto', 'completadoPor', 'completadoEn', 'fechaCreacion'])
+          'urlAdjunto', 'nombreAdjunto', 'completadoPor', 'completadoEn', 'fechaCreacion', 'notificarAsignacion'])
+        && request.resource.data.get('notificarAsignacion', true) == true
         && request.resource.data.keys().hasAll(['alumnoId'])
         && (request.resource.data.alumnoId == null
           || esAlumnoActivoDe(request.resource.data.elencoId, request.resource.data.alumnoId))

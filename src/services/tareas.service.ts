@@ -9,8 +9,10 @@ import {
   onSnapshot,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
+  writeBatch,
   type DocumentData,
   type Unsubscribe,
   type WithFieldValue,
@@ -40,6 +42,7 @@ function mapTarea(id: string, data: DocumentData): ConId<Tarea> {
     tipoAdjunto: data.tipoAdjunto ?? "Ninguno",
     urlAdjunto: data.urlAdjunto,
     nombreAdjunto: data.nombreAdjunto,
+    notificarAsignacion: data.notificarAsignacion === true ? true : undefined,
     completadoPor: data.completadoPor ?? [],
     completadoEn,
     fechaCreacion: timestampADate(data.fechaCreacion),
@@ -143,6 +146,7 @@ export async function crearTarea(datos: DatosNuevaTarea): Promise<string> {
     tipoAdjunto: adjunto ? datos.tipoAdjunto : "Ninguno",
     completadoPor: [],
     completadoEn: {},
+    notificarAsignacion: true,
     fechaCreacion: serverTimestamp(),
     ...(datos.fechaLimite ? { fechaLimite: datos.fechaLimite } : {}),
     ...(adjunto ?? {}),
@@ -179,12 +183,50 @@ export async function eliminarTarea(tarea: ConId<Tarea>): Promise<void> {
  * hacen la operación atómica aunque varios alumnos marquen a la vez.
  */
 export async function marcarTarea(
-  tareaId: string,
+  tarea: Pick<ConId<Tarea>, "id" | "notificarAsignacion">,
   alumnoId: string,
   completada: boolean
 ): Promise<void> {
-  await updateDoc(doc(db, COLECCION, tareaId), {
+  const referencia = doc(db, COLECCION, tarea.id);
+  const cambios = {
     completadoPor: completada ? arrayUnion(alumnoId) : arrayRemove(alumnoId),
     [`completadoEn.${alumnoId}`]: completada ? serverTimestamp() : deleteField(),
-  });
+  };
+  if (completada && tarea.notificarAsignacion) {
+    const batch = writeBatch(db);
+    batch.update(referencia, cambios);
+    batch.set(doc(vistasDelAlumno(alumnoId), tarea.id), { fechaLectura: serverTimestamp() });
+    await batch.commit();
+    return;
+  }
+  await updateDoc(referencia, cambios);
+}
+
+function vistasDelAlumno(alumnoId: string) {
+  return collection(db, "usuarios", alumnoId, "tareas_vistas");
+}
+
+export function suscribirTareasVistas(
+  alumnoId: string,
+  onVistas: (ids: ReadonlySet<string>) => void,
+  onError: () => void,
+): Unsubscribe {
+  return onSnapshot(
+    vistasDelAlumno(alumnoId),
+    { includeMetadataChanges: true },
+    (snap) => {
+      if (!snap.metadata.fromCache) onVistas(new Set(snap.docs.map((d) => d.id)));
+    },
+    onError,
+  );
+}
+
+export async function marcarTareasVistas(alumnoId: string, tareaIds: string[]): Promise<void> {
+  const vistas = vistasDelAlumno(alumnoId);
+  const resultados = await Promise.allSettled(
+    tareaIds.map((tareaId) => setDoc(doc(vistas, tareaId), { fechaLectura: serverTimestamp() })),
+  );
+  if (resultados.some((resultado) => resultado.status === "rejected")) {
+    throw new Error("No se pudieron guardar todas las lecturas de tareas.");
+  }
 }
