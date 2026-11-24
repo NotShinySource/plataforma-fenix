@@ -7,16 +7,18 @@ import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
 import { FormularioContenido } from "@/components/intranet/admin/landing/FormularioContenido";
 import { ListaActuaciones } from "@/components/intranet/admin/landing/ListaActuaciones";
+import { ListaPreguntas } from "@/components/intranet/admin/landing/ListaPreguntas";
 import { obtenerLandingAdminAction } from "./actions";
-import type { ActuacionLanding, ConId, ContenidoLanding } from "@/types";
+import type { ActuacionLanding, ConId, ContenidoLanding, PreguntaFrecuente } from "@/types";
 
 /**
- * Panel para editar la Landing (RF-14): portada, organización y
- * actuaciones. La sección de Escuelas y el pie de página siguen fijos.
+ * Panel para editar la Landing (RF-14): portada, organización, actuaciones
+ * y preguntas frecuentes. La sección de Escuelas y el pie de página siguen fijos.
  */
 export default function AdminLandingPage() {
   const [contenido, setContenido] = useState<ContenidoLanding | null>(null);
   const [actuaciones, setActuaciones] = useState<ConId<ActuacionLanding>[]>([]);
+  const [preguntas, setPreguntas] = useState<ConId<PreguntaFrecuente>[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
 
@@ -35,6 +37,7 @@ export default function AdminLandingPage() {
         }
         setContenido((actual) => actual ?? resultado.contenido);
         setActuaciones(resultado.actuaciones);
+        setPreguntas(resultado.preguntas);
       } catch {
         if (!cancelado) setError("No se pudo cargar el contenido de la Landing.");
       }
@@ -73,6 +76,7 @@ export default function AdminLandingPage() {
         <>
           <FormularioContenido inicial={contenido} />
           <ListaActuaciones actuaciones={actuaciones} onCambio={() => setVersion((v) => v + 1)} />
+          <ListaPreguntas preguntas={preguntas} onCambio={() => setVersion((v) => v + 1)} />
         </>
       )}
     </>

@@ -297,6 +297,10 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /preguntas_landing/{preguntaId} {
+      allow read, write: if false;
+    }
+
     // Datos personales cifrados (RUT, correos, fecha de nacimiento) y el
     // contador de solicitudes de acceso. Ni el propio usuario puede leerlos.
     match /datos_privados/{uid} {
