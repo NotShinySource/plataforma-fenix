@@ -66,6 +66,18 @@ export async function cargarEscenario(entorno: RulesTestEnvironment): Promise<vo
       ["miembros_elenco/e3_alumno", membresia("e3", "alumno", "alumno")],
       ["archivos/a1", { elencoId: "e1", profesorId: "profe", tipo: "pdf", titulo: "Partitura" }],
       ["avisos/v1", { elencoId: "e1", profesorId: "profe", titulo: "Ensayo", contenido: "Sábado", urgente: false }],
+      [
+        "avisos/v2",
+        {
+          alcance: "escuela",
+          origen: "direccion",
+          elencoId: null,
+          profesorId: "admin",
+          titulo: "Feriado",
+          contenido: "No hay clases el lunes",
+          urgente: true,
+        },
+      ],
       ["asistencias/s1_alumno", { elencoId: "e1", alumnoId: "alumno", sesionId: "s1", estado: "presente" }],
       ["observaciones_asistencia/s1_alumno", { elencoId: "e1", alumnoId: "alumno", sesionId: "s1", texto: "Llegó tarde" }],
       [

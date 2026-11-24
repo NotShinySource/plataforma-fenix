@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronDown, Circle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, Circle, Landmark } from "lucide-react";
 import { formatearFechaLarga } from "@/lib/format";
 import { marcarAvisoComoLeido } from "@/services/avisos.service";
 import type { Aviso, ConId } from "@/types";
 
 interface AvisoCardProps {
   aviso: ConId<Aviso>;
+  /** El grupo del aviso o "Toda la escuela". */
   nombreElenco: string;
   alumnoId: string;
   leidoInicial: boolean;
@@ -57,6 +58,11 @@ export function AvisoCard({ aviso, nombreElenco, alumnoId, leidoInicial }: Aviso
               {aviso.urgente && (
                 <span className="bg-terracotta text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
                   Urgente
+                </span>
+              )}
+              {aviso.origen === "direccion" && (
+                <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                  <Landmark className="w-3 h-3" /> Dirección
                 </span>
               )}
               <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">

@@ -235,6 +235,29 @@ describe("avisos y lecturas", () => {
     await assertFails(db("ajeno").doc("avisos/v1/lecturas/ajeno").set(lectura));
     await assertFails(db("profe").doc("avisos/v1/lecturas/alumno").get());
   });
+  it("un aviso para toda la escuela lo lee cualquier sesión, también sin grupos", async () => {
+    const deEscuela = (nombre: NombreUsuario) =>
+      db(nombre).collection("avisos").where("alcance", "==", "escuela").get();
+    await assertSucceeds(deEscuela("alumno"));
+    await assertSucceeds(deEscuela("ajeno"));
+    await assertSucceeds(deEscuela("profe2"));
+    await assertSucceeds(db("ajeno").doc("avisos/v2").get());
+    await assertFails(anonimo().doc("avisos/v2").get());
+    // Sin filtrar por alcance, la consulta podría traer avisos de otros grupos.
+    await assertFails(db("ajeno").collection("avisos").get());
+  });
+  it("cualquier alumno marca como leído un aviso de toda la escuela; un docente no", async () => {
+    const lectura = { leido: true, fechaLectura: horaServidor() };
+    await assertSucceeds(db("ajeno").doc("avisos/v2/lecturas/ajeno").set(lectura));
+    await assertFails(db("profe").doc("avisos/v2/lecturas/profe").set(lectura));
+  });
+  it("desde el navegador nadie publica para toda la escuela, ni borra avisos", async () => {
+    await assertFails(
+      db("profe").collection("avisos").add(aviso({ alcance: "escuela", origen: "direccion" }))
+    );
+    await assertFails(db("admin").collection("avisos").add(aviso({ profesorId: "admin" })));
+    await assertFails(db("admin").doc("avisos/v2").delete());
+  });
 });
 
 describe("tareas", () => {

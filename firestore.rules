@@ -176,8 +176,18 @@ service cloud.firestore {
 
     // ----------------------------------------------------- Avisos (RF-11)
 
+    // Un aviso es de un grupo o, si lo publica la Dirección, para toda la
+    // escuela (alcance "escuela", sin elencoId). Los avisos antiguos no tienen
+    // el campo y cuentan como de grupo. La Dirección publica y borra desde el
+    // servidor; desde el navegador solo publica el docente, en su grupo.
     match /avisos/{avisoId} {
-      allow read: if esAdmin() || esMiembro(resource.data.elencoId);
+      function esDeEscuela(datos) {
+        return datos.get('alcance', 'elenco') == 'escuela';
+      }
+
+      allow read: if esAdmin()
+        || (autenticado() && esDeEscuela(resource.data))
+        || esMiembro(resource.data.elencoId);
 
       allow create: if puedePublicarEn(request.resource.data.elencoId)
         && request.resource.data.profesorId == request.auth.uid
@@ -190,12 +200,19 @@ service cloud.firestore {
 
       allow update, delete: if false;
 
+      // El alumno recibe los avisos de sus grupos y los de toda la escuela.
+      function esDestinatarioAlumno(aviso) {
+        return esDeEscuela(aviso)
+          ? request.auth.token.rol == 'alumno'
+          : esAlumnoDelElenco(aviso.elencoId);
+      }
+
       // Lectura de un aviso por un alumno. El ID del documento es el uid del
-      // alumno: solo se escribe la propia, y solo de avisos de sus elencos.
+      // alumno: solo se escribe la propia, y solo de avisos que le llegan.
       match /lecturas/{alumnoId} {
         allow read: if esAdmin() || esPropio(alumnoId);
         allow create, update: if esPropio(alumnoId)
-          && esAlumnoDelElenco(get(/databases/$(database)/documents/avisos/$(avisoId)).data.elencoId)
+          && esDestinatarioAlumno(get(/databases/$(database)/documents/avisos/$(avisoId)).data)
           && request.resource.data.keys().hasOnly(['leido', 'fechaLectura'])
           && request.resource.data.leido == true
           && esHoraDelServidor(request.resource.data.fechaLectura);
