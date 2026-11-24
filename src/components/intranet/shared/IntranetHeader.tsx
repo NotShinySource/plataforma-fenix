@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Music } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { usePerfilPropio } from "@/hooks/usePerfilPropio";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -40,18 +41,23 @@ export function IntranetHeader({ nav }: IntranetHeaderProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20 gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="bg-primary p-2.5 rounded-xl text-white shadow-md shadow-primary/20 flex-shrink-0">
-              <Music className="w-5 h-5" />
-            </div>
+            <Image
+              src="/imagenes/inicio/CALAMABANDA.png"
+              alt="Calambanda"
+              width={1179}
+              height={435}
+              sizes="(min-width: 1280px) 109px, (min-width: 640px) 98px, 87px"
+              className="h-8 w-auto shrink-0 sm:h-9 xl:h-10"
+            />
             <div className="min-w-0">
-              <span className="font-extrabold text-xl tracking-tighter text-text-dark block">
+              <span className="block truncate text-xs font-extrabold tracking-tight text-text-dark sm:text-sm">
                 FÉNIX INTRANET
               </span>
               {cargandoPerfil ? (
-                <Skeleton className="h-3 w-32 mt-1.5" />
-              ) : (
-                <span className="text-xs font-bold tracking-widest text-slate-600 uppercase mt-0.5 block truncate">
-                  {nombreMostrado ? `Hola, ${nombreMostrado}` : "Calambanda"}
+                <Skeleton className="mt-1 h-3 w-20 max-w-full sm:w-28" />
+              ) : nombreMostrado && (
+                <span className="mt-0.5 block truncate text-xs font-bold uppercase tracking-widest text-slate-600">
+                  Hola, {nombreMostrado}
                 </span>
               )}
             </div>
