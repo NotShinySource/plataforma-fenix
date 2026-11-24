@@ -3,7 +3,8 @@ import {
   formatearFechaNumerica,
   sumarMinutos,
 } from "@/lib/clases/calendario";
-import type { ConId, SesionClase } from "@/types";
+import { porcentajeAsistencia } from "@/lib/clases/asistencia";
+import type { Asistencia, ConId, SesionClase } from "@/types";
 
 export interface FilaInforme {
   fecha: string;
@@ -25,6 +26,71 @@ export interface FilaInforme {
 export interface ConteoAsistencia {
   presentes: number;
   total: number;
+}
+
+export interface FilaAsistenciaAlumno extends ConteoAsistencia {
+  alumnoId: string;
+  alumno: string;
+  elencoId: string;
+  elenco: string;
+  ausencias: number;
+  justificadas: number;
+  porcentaje: number;
+}
+
+/** Resume los registros del informe, incluidas las asistencias anteriores al calendario. */
+export function resumirAsistenciaInforme(
+  sesiones: Pick<ConId<SesionClase>, "id" | "elencoId" | "estado">[],
+  registros: Pick<Asistencia, "alumnoId" | "elencoId" | "sesionId" | "estado">[],
+  nombresElencos: Record<string, string>,
+  nombresUsuarios: Record<string, string>,
+): { porSesion: Record<string, ConteoAsistencia>; porAlumno: FilaAsistenciaAlumno[] } {
+  const elencosPorSesion = new Map(
+    sesiones.filter(({ estado }) => estado === "realizada" || estado === "incompleta")
+      .map(({ id, elencoId }) => [id, elencoId]),
+  );
+  const porSesion: Record<string, ConteoAsistencia> = Object.create(null);
+  const alumnosPorElenco = new Map<string, Map<string, Omit<FilaAsistenciaAlumno, "porcentaje">>>();
+
+  for (const { alumnoId, elencoId, sesionId, estado } of registros) {
+    if (sesionId) {
+      if (elencosPorSesion.get(sesionId) !== elencoId) continue;
+      const conteo = (porSesion[sesionId] ??= { presentes: 0, total: 0 });
+      conteo.total++;
+      if (estado === "presente") conteo.presentes++;
+    }
+
+    let alumnos = alumnosPorElenco.get(elencoId);
+    if (!alumnos) {
+      alumnos = new Map();
+      alumnosPorElenco.set(elencoId, alumnos);
+    }
+    let alumno = alumnos.get(alumnoId);
+    if (!alumno) {
+      alumno = {
+        alumnoId,
+        alumno: nombresUsuarios[alumnoId] || "Alumno sin perfil",
+        elencoId,
+        elenco: nombresElencos[elencoId] ?? "Elenco eliminado",
+        presentes: 0,
+        ausencias: 0,
+        justificadas: 0,
+        total: 0,
+      };
+      alumnos.set(alumnoId, alumno);
+    }
+    alumno.total++;
+    if (estado === "presente") alumno.presentes++;
+    if (estado === "ausente") alumno.ausencias++;
+    if (estado === "justificado") alumno.justificadas++;
+  }
+
+  const porAlumno = [...alumnosPorElenco.values()]
+    .flatMap((alumnos) => [...alumnos.values()])
+    .map((fila) => ({ ...fila, porcentaje: porcentajeAsistencia(fila.presentes, fila.total) }))
+    .sort((a, b) => a.elenco.localeCompare(b.elenco, "es") || a.alumno.localeCompare(b.alumno, "es"));
+
+  return { porSesion, porAlumno };
 }
 
 export function filasInforme(
@@ -96,7 +162,8 @@ const COLUMNAS = [
  */
 export async function generarExcelInforme(
   filas: FilaInforme[],
-  meta: MetadatosInforme
+  meta: MetadatosInforme,
+  asistenciaAlumnos: FilaAsistenciaAlumno[],
 ): Promise<Blob> {
   const { default: ExcelJS } = await import("exceljs");
 
@@ -233,6 +300,33 @@ export async function generarExcelInforme(
     filaHoja.getCell(3).font = { name: "Calibri", size: 10, bold: true, color: { argb: AZUL } };
     filaHoja.getCell(3).alignment = { horizontal: "left" };
   });
+
+  const asistencia = libro.addWorksheet("Asistencia por alumno", {
+    views: [{ state: "frozen", ySplit: 3, showGridLines: false }],
+  });
+  asistencia.columns = [26, 38, 13, 13, 14, 15, 15].map((width) => ({ width }));
+  asistencia.mergeCells("A1:G1");
+  asistencia.getCell("A1").value = "Asistencia por alumno y elenco";
+  asistencia.getCell("A1").font = { name: "Calibri", size: 16, bold: true, color: { argb: AZUL } };
+  asistencia.mergeCells("A2:G2");
+  asistencia.getCell("A2").value = hoja.getCell("C3").value;
+  asistencia.getCell("A2").font = { name: "Calibri", size: 11, color: { argb: GRIS_TEXTO } };
+  const titulosAsistencia = asistencia.getRow(3);
+  titulosAsistencia.values = ["Elenco", "Alumno", "Presentes", "Ausencias", "Justificadas", "Total registrado", "Asistencia"];
+  titulosAsistencia.eachCell((celda) => {
+    celda.font = { name: "Calibri", size: 11, bold: true, color: { argb: BLANCO } };
+    celda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: AZUL } };
+  });
+  for (const alumno of asistenciaAlumnos) {
+    const fila = asistencia.addRow([
+      alumno.elenco, alumno.alumno, alumno.presentes, alumno.ausencias, alumno.justificadas,
+      alumno.total, alumno.porcentaje / 100,
+    ]);
+    fila.getCell(7).numFmt = "0%";
+  }
+  if (asistenciaAlumnos.length > 0) {
+    asistencia.autoFilter = { from: "A3", to: `G${asistenciaAlumnos.length + 3}` };
+  }
 
   const contenido = await libro.xlsx.writeBuffer();
   return new Blob([contenido], {

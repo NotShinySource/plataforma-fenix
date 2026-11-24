@@ -1,7 +1,7 @@
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from "@firebase/rules-unit-testing";
 import firebase from "firebase/compat/app";
 import "firebase/compat/firestore";
-import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { cargarEscenario, como, crearEntorno, type NombreUsuario } from "./entorno";
 
 let entorno: RulesTestEnvironment;
@@ -185,8 +185,13 @@ describe("asistencia y observaciones", () => {
     await assertFails(porSesion("profe2"));
     await assertFails(db("profe").collection("asistencias").where("sesionId", "==", "s1").get());
   });
-  it("la Dirección consulta varias sesiones a la vez", async () => {
-    await assertSucceeds(db("admin").collection("asistencias").where("sesionId", "in", ["s1", "s2"]).get());
+  it("solo la Dirección puede consultar todas las asistencias de un período", async () => {
+    const porPeriodo = (nombre: NombreUsuario) => db(nombre).collection("asistencias")
+      .where("fechaSesion", ">=", "2026-03-01").where("fechaSesion", "<=", "2026-03-31").get();
+    const asistencias = await assertSucceeds(porPeriodo("admin"));
+    expect(asistencias.docs.map((documento) => documento.id)).toContain("s1_alumno");
+    await assertFails(porPeriodo("profe"));
+    await assertFails(porPeriodo("alumno"));
   });
   it("las observaciones no las lee el alumno, ni siquiera las suyas", async () => {
     await assertFails(db("alumno").doc("observaciones_asistencia/s1_alumno").get());

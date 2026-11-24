@@ -78,7 +78,7 @@ export async function cargarEscenario(entorno: RulesTestEnvironment): Promise<vo
           urgente: true,
         },
       ],
-      ["asistencias/s1_alumno", { elencoId: "e1", alumnoId: "alumno", sesionId: "s1", estado: "presente" }],
+      ["asistencias/s1_alumno", { elencoId: "e1", alumnoId: "alumno", sesionId: "s1", estado: "presente", fechaSesion: "2026-03-10" }],
       ["observaciones_asistencia/s1_alumno", { elencoId: "e1", alumnoId: "alumno", sesionId: "s1", texto: "Llegó tarde" }],
       [
         "tareas/t1",

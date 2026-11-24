@@ -3,20 +3,21 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Download, FileSpreadsheet } from "lucide-react";
-import { formatearFechaNumerica, hoyEnChile } from "@/lib/clases/calendario";
+import { esFechaValida, formatearFechaNumerica, hoyEnChile } from "@/lib/clases/calendario";
 import {
   descargarArchivo,
   filasInforme,
   generarExcelInforme,
-  type ConteoAsistencia,
+  resumirAsistenciaInforme,
+  type FilaAsistenciaAlumno,
 } from "@/lib/clases/informe";
 import { listarSesionesDictadas } from "@/services/clases.service";
 import { listarElencos } from "@/services/elencos.service";
-import { listarAsistenciasDeSesiones } from "@/services/asistencias.service";
-import { obtenerUsuario } from "@/services/usuarios.service";
+import { listarAsistenciasEnPeriodo } from "@/services/asistencias.service";
+import { listarNombresUsuarios } from "@/services/usuarios.service";
 import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
-import type { ConId, Elenco, SesionClase } from "@/types";
+import type { Asistencia, ConId, Elenco, SesionClase } from "@/types";
 import { CLASE_ERROR } from "@/components/ui/estilos";
 
 const CLASE_CAMPO =
@@ -24,42 +25,13 @@ const CLASE_CAMPO =
 
 interface Datos {
   elencos: ConId<Elenco>[];
-  sesiones: ConId<SesionClase>[];
-  nombresDocentes: Record<string, string>;
-  asistencia: Record<string, ConteoAsistencia>;
+  nombresUsuarios: Record<string, string>;
 }
 
-async function cargarDatos(): Promise<Datos> {
-  const [elencos, sesiones] = await Promise.all([listarElencos(), listarSesionesDictadas()]);
-
-  const idsDocentes = Array.from(
-    new Set(sesiones.map((sesion) => sesion.profesorId).filter((id): id is string => Boolean(id)))
-  );
-  const [docentes, registros] = await Promise.all([
-    Promise.all(idsDocentes.map((id) => obtenerUsuario(id).catch(() => null))),
-    listarAsistenciasDeSesiones(sesiones.map((sesion) => sesion.id)),
-  ]);
-
-  const nombresDocentes: Record<string, string> = {};
-  docentes.forEach((docente) => {
-    if (docente) nombresDocentes[docente.id] = `${docente.nombres} ${docente.apellidos}`;
-  });
-
-  const asistencia: Record<string, ConteoAsistencia> = {};
-  registros.forEach((registro) => {
-    if (!registro.sesionId) return;
-    const conteo = (asistencia[registro.sesionId] ??= { presentes: 0, total: 0 });
-    conteo.total += 1;
-    if (registro.estado === "presente") conteo.presentes += 1;
-  });
-
-  return {
-    elencos: elencos.sort((a, b) => a.nombre.localeCompare(b.nombre)),
-    sesiones,
-    nombresDocentes,
-    asistencia,
-  };
-}
+type AsistenciaPeriodo = { periodo: string } & (
+  | { ok: true; registros: ConId<Asistencia>[]; sesiones: ConId<SesionClase>[] }
+  | { ok: false }
+);
 
 export default function InformeClasesPage() {
   const [hoy] = useState(() => hoyEnChile());
@@ -67,15 +39,20 @@ export default function InformeClasesPage() {
   const [hasta, setHasta] = useState(hoy);
   const [elencoId, setElencoId] = useState("");
   const [datos, setDatos] = useState<Datos | null>(null);
+  const [asistenciaPeriodo, setAsistenciaPeriodo] = useState<AsistenciaPeriodo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
   const [errorExportar, setErrorExportar] = useState<string | null>(null);
+  const periodo = esFechaValida(desde) && esFechaValida(hasta) && desde <= hasta ? `${desde}/${hasta}` : null;
+  const asistencia = asistenciaPeriodo?.periodo === periodo ? asistenciaPeriodo : null;
 
   useEffect(() => {
     let cancelado = false;
-    cargarDatos()
-      .then((resultado) => {
-        if (!cancelado) setDatos(resultado);
+    Promise.all([listarElencos(), listarNombresUsuarios()])
+      .then(([elencos, nombresUsuarios]) => {
+        if (!cancelado) {
+          setDatos({ elencos: elencos.sort((a, b) => a.nombre.localeCompare(b.nombre, "es")), nombresUsuarios });
+        }
       })
       .catch(() => {
         if (!cancelado) setError("No se pudo cargar el informe.");
@@ -85,26 +62,41 @@ export default function InformeClasesPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!periodo) return;
+    let cancelado = false;
+    Promise.all([listarAsistenciasEnPeriodo(desde, hasta), listarSesionesDictadas(desde, hasta)])
+      .then(([registros, sesiones]) => {
+        if (!cancelado) setAsistenciaPeriodo({ periodo, ok: true, registros, sesiones });
+      })
+      .catch(() => {
+        if (!cancelado) setAsistenciaPeriodo({ periodo, ok: false });
+      });
+    return () => { cancelado = true; };
+  }, [desde, hasta, periodo]);
+
   const nombresElencos = useMemo(
     () => Object.fromEntries((datos?.elencos ?? []).map((elenco) => [elenco.id, elenco.nombre])),
     [datos]
   );
 
-  const filas = useMemo(() => {
-    if (!datos) return [];
-    const filtradas = datos.sesiones.filter(
-      (sesion) =>
-        sesion.fecha >= desde && sesion.fecha <= hasta && (!elencoId || sesion.elencoId === elencoId)
-    );
-    return filasInforme(filtradas, nombresElencos, datos.nombresDocentes, datos.asistencia);
-  }, [datos, desde, hasta, elencoId, nombresElencos]);
+  const informe = useMemo(() => {
+    if (!datos || !asistencia?.ok) return null;
+    const sesiones = elencoId ? asistencia.sesiones.filter((sesion) => sesion.elencoId === elencoId) : asistencia.sesiones;
+    const registros = elencoId ? asistencia.registros.filter((registro) => registro.elencoId === elencoId) : asistencia.registros;
+    const { porSesion, porAlumno } = resumirAsistenciaInforme(sesiones, registros, nombresElencos, datos.nombresUsuarios);
+    return { clases: filasInforme(sesiones, nombresElencos, datos.nombresUsuarios, porSesion), alumnos: porAlumno };
+  }, [datos, asistencia, elencoId, nombresElencos]);
+
+  const puedeExportar = informe && (informe.clases.length > 0 || informe.alumnos.length > 0);
 
   async function exportar() {
+    if (!informe) return;
     setExportando(true);
     setErrorExportar(null);
     try {
       const nombreElenco = elencoId ? (nombresElencos[elencoId] ?? "Elenco") : null;
-      const archivo = await generarExcelInforme(filas, { desde, hasta, elenco: nombreElenco });
+      const archivo = await generarExcelInforme(informe.clases, { desde, hasta, elenco: nombreElenco }, informe.alumnos);
       const sufijo = nombreElenco ? `-${nombreElenco.replace(/\s+/g, "-")}` : "";
       descargarArchivo(archivo, `informe-clases${sufijo}-${desde}-a-${hasta}.xlsx`);
     } catch {
@@ -163,7 +155,7 @@ export default function InformeClasesPage() {
             <button
               type="button"
               onClick={exportar}
-              disabled={filas.length === 0 || exportando}
+              disabled={!puedeExportar || exportando}
               className="flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" /> {exportando ? "Generando..." : "Descargar Excel"}
@@ -176,12 +168,21 @@ export default function InformeClasesPage() {
             </p>
           )}
 
+          {!periodo && <EstadoError mensaje="Selecciona un período válido." />}
+          {periodo && !asistencia && <EstadoCargando texto="Cargando asistencias del período..." />}
+          {asistencia?.ok === false && <EstadoError mensaje="No se pudo cargar la asistencia del período." />}
+        </>
+      )}
+
+      {informe && (
+        <>
+          <TablaAsistenciaAlumnos filas={informe.alumnos} />
           <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
               <h2 className="font-extrabold text-text-dark">Clases dictadas</h2>
-              <span className="text-xs font-bold text-slate-600">{filas.length} clases</span>
+              <span className="text-xs font-bold text-slate-600">{informe.clases.length} clases</span>
             </div>
-            {filas.length === 0 ? (
+            {informe.clases.length === 0 ? (
               <p className="text-sm font-semibold text-slate-600 px-5 py-10 text-center">
                 No hay clases dictadas en este período.
               </p>
@@ -198,7 +199,7 @@ export default function InformeClasesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filas.map((fila, indice) => (
+                    {informe.clases.map((fila, indice) => (
                       <tr key={`${fila.fecha}-${indice}`} className={`align-top ${indice % 2 === 1 ? "bg-primary/[0.04]" : ""}`}>
                         <td className="px-5 py-3 font-semibold text-text-dark whitespace-nowrap tabular-nums">
                           {formatearFechaNumerica(fila.fecha)}
@@ -226,5 +227,50 @@ export default function InformeClasesPage() {
         </>
       )}
     </>
+  );
+}
+
+function TablaAsistenciaAlumnos({ filas }: { filas: FilaAsistenciaAlumno[] }) {
+  return (
+    <section aria-labelledby="titulo-asistencia" className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100">
+        <h2 id="titulo-asistencia" className="font-extrabold text-text-dark">Asistencia por alumno</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Porcentaje de presencias sobre el total registrado para cada alumno y elenco durante el período.
+        </p>
+      </div>
+      {filas.length === 0 ? (
+        <p className="text-sm font-semibold text-slate-600 px-5 py-8 text-center">
+          No hay asistencias registradas con estos filtros.
+        </p>
+      ) : (
+        <div className="overflow-x-auto scroll-fino">
+          <table aria-labelledby="titulo-asistencia" className="w-full text-sm">
+            <thead className="bg-primary text-xs font-bold text-white uppercase tracking-wider">
+              <tr>
+                <th scope="col" className="px-5 py-3 text-left">Elenco</th>
+                <th scope="col" className="px-5 py-3 text-left">Alumno</th>
+                {["Presentes", "Ausencias", "Justificadas", "Total registrado", "Asistencia"].map((columna) => (
+                  <th scope="col" key={columna} className="px-4 py-3 text-right whitespace-nowrap">{columna}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((fila) => (
+                <tr key={JSON.stringify([fila.elencoId, fila.alumnoId])} className="even:bg-primary/[0.04]">
+                  <td className="px-5 py-3 font-medium text-slate-700">{fila.elenco}</td>
+                  <th scope="row" className="px-5 py-3 text-left font-semibold text-text-dark">{fila.alumno}</th>
+                  <td className="px-4 py-3 text-right tabular-nums">{fila.presentes}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{fila.ausencias}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{fila.justificadas}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{fila.total}</td>
+                  <td className="px-4 py-3 text-right font-extrabold text-primary tabular-nums">{fila.porcentaje}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }

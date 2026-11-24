@@ -1,4 +1,4 @@
-import { doc, getDoc, type DocumentData } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, type DocumentData } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { timestampADate } from "@/lib/firebase/converters";
 import type { ConId, Usuario } from "@/types";
@@ -26,4 +26,13 @@ function mapUsuario(id: string, data: DocumentData): ConId<Usuario> {
 export async function obtenerUsuario(uid: string): Promise<ConId<Usuario> | null> {
   const snap = await getDoc(doc(db, COLECCION, uid));
   return snap.exists() ? mapUsuario(snap.id, snap.data()) : null;
+}
+
+/** Nombres para los informes de Dirección. Firestore restringe el listado a ese rol. */
+export async function listarNombresUsuarios(): Promise<Record<string, string>> {
+  const snap = await getDocs(collection(db, COLECCION));
+  return Object.fromEntries(snap.docs.map((documento) => {
+    const { nombres, apellidos } = documento.data();
+    return [documento.id, `${nombres ?? ""} ${apellidos ?? ""}`.trim()];
+  }));
 }
