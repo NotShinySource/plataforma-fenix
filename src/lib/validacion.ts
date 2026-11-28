@@ -69,7 +69,7 @@ export const ACCEPT_MATERIAL = {
 } as const;
 
 function validarFormatoArchivo(
-  archivo: File,
+  archivo: Pick<File, "name" | "size">,
   limite: { extensiones: readonly string[]; maximoBytes: number; etiqueta: string },
 ): string | null {
   const nombre = archivo.name.toLowerCase();
@@ -80,7 +80,7 @@ function validarFormatoArchivo(
 }
 
 /** Devuelve el mensaje de error, o null si el archivo es aceptable. */
-export function validarArchivoMaterial(archivo: File, tipo: keyof typeof LIMITES_MATERIAL): string | null {
+export function validarArchivoMaterial(archivo: Pick<File, "name" | "size">, tipo: keyof typeof LIMITES_MATERIAL): string | null {
   return validarFormatoArchivo(archivo, LIMITES_MATERIAL[tipo]);
 }
 

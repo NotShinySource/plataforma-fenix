@@ -18,6 +18,13 @@ import type { Archivo, ConId, TipoArchivo } from "@/types";
 
 const COLECCION = "archivos";
 
+const CONTENT_TYPE: Record<TipoArchivo, string> = {
+  pdf: "application/pdf",
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  jpeg: "image/jpeg",
+};
+
 function mapArchivo(id: string, data: DocumentData): ConId<Archivo> {
   return {
     id,
@@ -71,7 +78,10 @@ export async function subirArchivo(datos: DatosSubidaArchivo): Promise<string> {
   const rutaStorage = `elencos/${datos.elencoId}/${datos.tipo}/${Date.now()}_${datos.archivo.name}`;
   const referenciaStorage = ref(storage, rutaStorage);
 
-  await uploadBytes(referenciaStorage, datos.archivo, esJpeg ? { contentType: "image/jpeg" } : undefined);
+  // El tipo se fija desde el formato ya validado: el navegador a veces lo deja
+  // vacío (sobre todo con archivos elegidos desde una carpeta) y storage.rules
+  // rechaza la subida si no coincide.
+  await uploadBytes(referenciaStorage, datos.archivo, { contentType: CONTENT_TYPE[datos.tipo] });
   try {
     const nuevoArchivo: WithFieldValue<Archivo> = {
       elencoId: datos.elencoId,

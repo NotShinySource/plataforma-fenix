@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { esMiembroDeElenco, obtenerElenco } from "@/services/elencos.service";
 import { listarArchivosPorElenco, subirArchivo } from "@/services/archivos.service";
 import { ArchivoRow } from "@/components/intranet/profesor/ArchivoRow";
+import { SubidaMultiple } from "@/components/intranet/profesor/SubidaMultiple";
 import { EstadoCargando } from "@/components/ui/EstadoCargando";
 import { EstadoError } from "@/components/ui/EstadoError";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
@@ -39,6 +40,7 @@ export default function ProfesorMaterialPage() {
   const [inputFileKey, setInputFileKey] = useState(0);
   const [subiendo, setSubiendo] = useState(false);
   const [errorSubida, setErrorSubida] = useState<string | null>(null);
+  const [modoSubida, setModoSubida] = useState<"uno" | "varios">("uno");
 
   useEffect(() => {
     if (!usuario) return;
@@ -116,6 +118,10 @@ export default function ProfesorMaterialPage() {
     }
   }
 
+  async function recargarArchivos() {
+    setArchivos(await listarArchivosPorElenco(elencoId));
+  }
+
   function handleEliminado(archivoId: string) {
     setArchivos((previos) => previos.filter((archivo) => archivo.id !== archivoId));
   }
@@ -163,93 +169,126 @@ export default function ProfesorMaterialPage() {
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8 space-y-5">
-        <h3 className="text-lg font-extrabold text-text-dark">Subir nuevo material</h3>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="sm:col-span-2">
-            <label htmlFor="titulo" className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Título
-            </label>
-            <input
-              id="titulo"
-              type="text"
-              required
-              maxLength={LONGITUD_MAXIMA_TITULO_MATERIAL}
-              value={titulo}
-              onChange={(evento) => setTitulo(evento.target.value)}
-              placeholder="Ej: Score General - Sinfonía del Desierto"
-              className={CLASE_CAMPO}
-            />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-lg font-extrabold text-text-dark">Subir nuevo material</h3>
+          <div role="tablist" aria-label="Forma de subir" className="flex rounded-xl bg-slate-100 p-1 text-xs font-bold">
+            {(
+              [
+                ["uno", "Un archivo"],
+                ["varios", "Varios o una carpeta"],
+              ] as const
+            ).map(([valor, etiqueta]) => (
+              <button
+                key={valor}
+                type="button"
+                role="tab"
+                aria-selected={modoSubida === valor}
+                disabled={subiendo}
+                onClick={() => setModoSubida(valor)}
+                className={`rounded-lg px-3 py-2 transition-colors ${
+                  modoSubida === valor ? "bg-white text-primary shadow-sm" : "text-slate-600 hover:text-primary"
+                }`}
+              >
+                {etiqueta}
+              </button>
+            ))}
           </div>
-
-          <div>
-            <label htmlFor="categoria" className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Categoría
-            </label>
-            <input
-              id="categoria"
-              type="text"
-              maxLength={LONGITUD_MAXIMA_CATEGORIA_MATERIAL}
-              value={categoria}
-              onChange={(evento) => setCategoria(evento.target.value)}
-              placeholder="Ej: Partitura"
-              className={CLASE_CAMPO}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="tipo" className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Tipo
-            </label>
-            <select
-              id="tipo"
-              value={tipo}
-              onChange={(evento) => setTipo(evento.target.value as TipoArchivo)}
-              className={CLASE_CAMPO}
-            >
-              <option value="pdf">PDF</option>
-              <option value="mp3">MP3</option>
-              <option value="wav">WAV</option>
-              <option value="jpeg">Foto JPEG</option>
-            </select>
-          </div>
-
-          <div className="sm:col-span-2">
-            <label htmlFor="archivo" className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Archivo{" "}
-              <span className="normal-case font-semibold text-slate-600">
-                (PDF o foto JPG/JPEG hasta 25 MB · MP3 o WAV hasta 50 MB)
-              </span>
-            </label>
-            <input
-              id="archivo"
-              key={inputFileKey}
-              type="file"
-              required
-              accept={ACCEPT_MATERIAL[tipo]}
-              onChange={(evento) => setArchivoSeleccionado(evento.target.files?.[0] ?? null)}
-              className="w-full text-sm font-medium text-slate-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
-            />
-          </div>
-
-          {errorSubida && (
+        </div>
+        {modoSubida === "varios" ? (
+          <SubidaMultiple
+            elencoId={elencoId}
+            profesorId={usuario!.uid}
+            archivosPublicados={archivos}
+            onTerminado={recargarArchivos}
+          />
+        ) : (
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
-              <p role="alert" className={CLASE_ERROR}>
-                {errorSubida}
-              </p>
+              <label htmlFor="titulo" className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Título
+              </label>
+              <input
+                id="titulo"
+                type="text"
+                required
+                maxLength={LONGITUD_MAXIMA_TITULO_MATERIAL}
+                value={titulo}
+                onChange={(evento) => setTitulo(evento.target.value)}
+                placeholder="Ej: Score General - Sinfonía del Desierto"
+                className={CLASE_CAMPO}
+              />
             </div>
-          )}
 
-          <div className="sm:col-span-2">
-            <button
-              type="submit"
-              disabled={subiendo}
-              className="flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <Upload className="w-4 h-4" />
-              {subiendo ? "Subiendo..." : "Subir material"}
-            </button>
-          </div>
-        </form>
+            <div>
+              <label htmlFor="categoria" className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Categoría
+              </label>
+              <input
+                id="categoria"
+                type="text"
+                maxLength={LONGITUD_MAXIMA_CATEGORIA_MATERIAL}
+                value={categoria}
+                onChange={(evento) => setCategoria(evento.target.value)}
+                placeholder="Ej: Partitura"
+                className={CLASE_CAMPO}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="tipo" className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Tipo
+              </label>
+              <select
+                id="tipo"
+                value={tipo}
+                onChange={(evento) => setTipo(evento.target.value as TipoArchivo)}
+                className={CLASE_CAMPO}
+              >
+                <option value="pdf">PDF</option>
+                <option value="mp3">MP3</option>
+                <option value="wav">WAV</option>
+                <option value="jpeg">Foto JPEG</option>
+              </select>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label htmlFor="archivo" className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Archivo{" "}
+                <span className="normal-case font-semibold text-slate-600">
+                  (PDF o foto JPG/JPEG hasta 25 MB · MP3 o WAV hasta 50 MB)
+                </span>
+              </label>
+              <input
+                id="archivo"
+                key={inputFileKey}
+                type="file"
+                required
+                accept={ACCEPT_MATERIAL[tipo]}
+                onChange={(evento) => setArchivoSeleccionado(evento.target.files?.[0] ?? null)}
+                className="w-full text-sm font-medium text-slate-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
+              />
+            </div>
+
+            {errorSubida && (
+              <div className="sm:col-span-2">
+                <p role="alert" className={CLASE_ERROR}>
+                  {errorSubida}
+                </p>
+              </div>
+            )}
+
+            <div className="sm:col-span-2">
+              <button
+                type="submit"
+                disabled={subiendo}
+                className="flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <Upload className="w-4 h-4" />
+                {subiendo ? "Subiendo..." : "Subir material"}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
