@@ -18,6 +18,7 @@
     "seed:tareas": "tsx scripts/seed-tareas.ts",
     "migrar:tareas": "tsx scripts/migrar-tareas-destinatario.ts",
     "seed:escuelas": "tsx scripts/seed-escuelas.ts",
+    "seed:demo": "tsx scripts/seed-test-users.ts && tsx scripts/seed-admin-user.ts && tsx scripts/seed-escuelas.ts && tsx scripts/seed-demo.ts",
     "eliminar:elenco": "tsx scripts/eliminar-elenco.ts"
   },
   "dependencies": {
