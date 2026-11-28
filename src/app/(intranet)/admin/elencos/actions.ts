@@ -417,7 +417,11 @@ export async function agregarMiembroAction(
   if (elencoDoc.data()?.activo === false) {
     return { ok: false, error: "El grupo está archivado. Reactívalo para agregar miembros." };
   }
-  if (!usuarioDoc.exists || usuarioDoc.data()?.rol !== rol) {
+  // El Director (administrador) puede quedar como profesor de un elenco,
+  // porque también hace clases.
+  const rolCuenta = usuarioDoc.data()?.rol;
+  const rolAdmitido = rolCuenta === rol || (rol === "profesor" && rolCuenta === "administrador");
+  if (!usuarioDoc.exists || !rolAdmitido) {
     return { ok: false, error: "El usuario no existe o no tiene el rol esperado." };
   }
   if (usuarioDoc.data()?.activo === false) {

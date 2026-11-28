@@ -91,7 +91,8 @@ export function ColumnaMiembros({
     () =>
       usuarios.filter(
         (u) =>
-          u.rol === rol &&
+          // El Director (administrador) también puede quedar como profesor.
+          (u.rol === rol || (rol === "profesor" && u.rol === "administrador")) &&
           u.activo !== false &&
           !idsMiembros.has(u.id) &&
           (busquedaRut.esRut ? u.id === busquedaRut.uid : coincideNombre(u, busqueda))
@@ -200,7 +201,9 @@ export function ColumnaMiembros({
           <option value="">{candidatos.length === 0 ? configuracion.sinCandidatos : configuracion.seleccionar}</option>
           {candidatos.map((candidato) => (
             <option key={candidato.id} value={candidato.id}>
-              {nombreCompleto(candidato)} — {candidato.rutEnmascarado ?? "sin RUT"}
+              {`${nombreCompleto(candidato)}${candidato.rol === "administrador" ? " (Dirección)" : ""} — ${
+                candidato.rutEnmascarado ?? "sin RUT"
+              }`}
             </option>
           ))}
         </select>

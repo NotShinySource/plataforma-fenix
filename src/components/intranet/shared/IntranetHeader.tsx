@@ -19,9 +19,15 @@ interface IntranetHeaderProps {
   nav: ItemNav[];
 }
 
-export function IntranetHeader({ nav }: IntranetHeaderProps) {
-  const { logout } = useAuth();
+export function IntranetHeader({ nav: navBase }: IntranetHeaderProps) {
+  const { logout, rol } = useAuth();
   const pathname = usePathname();
+  // El Director (administrador) también entra al área docente: ahí se le
+  // agrega el acceso de vuelta a su panel.
+  const nav =
+    rol === "administrador" && pathname.startsWith("/profesor")
+      ? [...navBase, { href: "/admin", label: "Panel Dirección" }]
+      : navBase;
   const router = useRouter();
   const { perfil, cargando: cargandoPerfil } = usePerfilPropio();
 

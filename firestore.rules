@@ -50,7 +50,9 @@ service cloud.firestore {
 
     function esProfesorDelElenco(elencoId) {
       return esMiembro(elencoId)
-        && request.auth.token.rol == 'profesor'
+        // El Director (administrador) también hace clases: con una membresía
+        // de profesor en el elenco, actúa como cualquier docente de ese elenco.
+        && request.auth.token.rol in ['profesor', 'administrador']
         && membresia(elencoId).data.rolEnElenco == 'profesor';
     }
 

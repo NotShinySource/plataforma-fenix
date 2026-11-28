@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { rolRequeridoParaRuta, RUTA_POR_ROL } from "@/lib/auth/rutas";
+import { puedeEntrarA, rolRequeridoParaRuta, RUTA_POR_ROL } from "@/lib/auth/rutas";
 import { SkeletonPagina } from "@/components/ui/Skeleton";
 
 /**
@@ -30,14 +30,14 @@ export default function IntranetLayout({
     }
 
     const rolRequerido = rolRequeridoParaRuta(pathname);
-    if (rolRequerido && rolRequerido !== rol) {
+    if (!puedeEntrarA(rol, rolRequerido)) {
       router.replace(RUTA_POR_ROL[rol]);
     }
   }, [cargando, usuario, rol, pathname, router]);
 
   const rolRequerido = rolRequeridoParaRuta(pathname);
   const sesionValida =
-    !cargando && usuario && rol && (!rolRequerido || rolRequerido === rol);
+    !cargando && usuario && rol && puedeEntrarA(rol, rolRequerido);
 
   if (!sesionValida) {
     return <SkeletonPagina />;

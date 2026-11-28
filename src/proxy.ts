@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { NOMBRE_COOKIE_SESION, verificarCookieSesion } from "@/lib/auth/sesion";
-import { rolRequeridoParaRuta, RUTA_POR_ROL } from "@/lib/auth/rutas";
+import { puedeEntrarA, rolRequeridoParaRuta, RUTA_POR_ROL } from "@/lib/auth/rutas";
 
 /**
  * Protección de la intranet en el servidor: antes de responder una ruta de
@@ -24,7 +24,7 @@ export async function proxy(request: NextRequest) {
   }
 
   const rolRequerido = rolRequeridoParaRuta(pathname);
-  if (rolRequerido && rolRequerido !== sesion.rol) {
+  if (!puedeEntrarA(sesion.rol, rolRequerido)) {
     return NextResponse.redirect(new URL(RUTA_POR_ROL[sesion.rol], request.url));
   }
 

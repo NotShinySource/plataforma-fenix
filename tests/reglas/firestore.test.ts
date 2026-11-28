@@ -158,6 +158,10 @@ describe("archivos (material)", () => {
     await assertFails(material.add(nuevo({ ...foto, nombreArchivo: "partitura.pdf" })));
     await assertFails(material.add(nuevo({ ...foto, tamanioBytes: 25 * 1024 * 1024 + 1 })));
   });
+  it("la Dirección sube material solo donde es profesora del elenco", async () => {
+    await assertSucceeds(db("admin").collection("archivos").add(nuevo({ elencoId: "e2", profesorId: "admin" })));
+    await assertFails(db("admin").collection("archivos").add(nuevo({ profesorId: "admin" })));
+  });
   it("se rechaza material de alumnos, de otro elenco o a nombre de otro docente", async () => {
     await assertFails(db("alumno").collection("archivos").add(nuevo({ profesorId: "alumno" })));
     await assertFails(db("profe2").collection("archivos").add(nuevo({ profesorId: "profe2" })));

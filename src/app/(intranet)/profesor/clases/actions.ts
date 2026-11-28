@@ -23,7 +23,11 @@ const coleccionSesiones = () => dbAdmin.collection("sesiones_clase");
 async function verificarProfesor(idToken: string) {
   const verificacion = await verificarUsuario(idToken);
   if (!verificacion.ok) return verificacion;
-  if (verificacion.rol !== "profesor") return { ok: false as const, error: "No autorizado." };
+  // El administrador también puede hacer clases; en cada acción se exige
+  // además su membresía de profesor en el elenco (esProfesorDelElenco).
+  if (verificacion.rol !== "profesor" && verificacion.rol !== "administrador") {
+    return { ok: false as const, error: "No autorizado." };
+  }
   return verificacion;
 }
 
