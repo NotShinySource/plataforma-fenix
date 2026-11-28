@@ -238,6 +238,24 @@ export default function AdminDashboardPage() {
             </div>
             <ChevronRight className="w-5 h-5 text-slate-400 group-hover:translate-x-1 transition-transform" />
           </Link>
+
+          {/* El Director también hace clases: entra al área docente con sus
+              elencos asignados como profesor. */}
+          <Link
+            href="/profesor"
+            className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center gap-4 group"
+          >
+            <div className="bg-primary/10 p-3 rounded-2xl text-primary flex-shrink-0">
+              <GraduationCap className="w-6 h-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-extrabold text-text-dark">Mis clases como docente</h3>
+              <p className="text-xs text-slate-600 font-semibold mt-0.5">
+                Material, asistencia, tareas y avisos de los elencos donde haces clases
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:translate-x-1 transition-transform" />
+          </Link>
         </div>
       </div>
     </>

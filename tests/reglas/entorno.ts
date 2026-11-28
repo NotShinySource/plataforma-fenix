@@ -9,7 +9,7 @@ import {
  * Escenario común de las pruebas de reglas:
  * - elenco e1: profesor "profe", alumnos "alumno" y "companero", y alumno "inactivo"
  *   (membresía desactivada);
- * - elenco e2: profesor "profe2";
+ * - elenco e2: profesores "profe2" y "admin" (el Director también hace clases);
  * - itinerancia e3, archivada: profesor "profe" y alumno "alumno";
  * - escuela es1;
  * - "ajeno": alumno sin elencos; "admin": la Dirección.
@@ -62,6 +62,7 @@ export async function cargarEscenario(entorno: RulesTestEnvironment): Promise<vo
       ["miembros_elenco/e1_companero", membresia("e1", "companero", "alumno")],
       ["miembros_elenco/e1_inactivo", membresia("e1", "inactivo", "alumno", false)],
       ["miembros_elenco/e2_profe2", membresia("e2", "profe2", "profesor")],
+      ["miembros_elenco/e2_admin", membresia("e2", "admin", "profesor")],
       ["miembros_elenco/e3_profe", membresia("e3", "profe", "profesor")],
       ["miembros_elenco/e3_alumno", membresia("e3", "alumno", "alumno")],
       ["archivos/a1", { elencoId: "e1", profesorId: "profe", tipo: "pdf", titulo: "Partitura" }],
