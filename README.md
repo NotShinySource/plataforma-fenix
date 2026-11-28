@@ -33,12 +33,12 @@ Los correos no se envían: se imprimen en la terminal del servidor.
 |---|---|
 | `NEXT_PUBLIC_FIREBASE_*` | Configuración web del proyecto Firebase |
 | `NEXT_PUBLIC_USE_FIREBASE_EMULATOR` | `true` para trabajar contra los emuladores |
-| `FIREBASE_ADMIN_PROJECT_ID`, `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY` | Cuenta de servicio del Admin SDK |
+| `FIREBASE_ADMIN_PROJECT_ID`, `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY` | Cuenta de servicio del Admin SDK. No se usan en App Hosting, donde el servidor se autentica con la cuenta de servicio del proyecto |
 | `FENIX_CLAVE_HMAC` | Clave (32 bytes en base64) para derivar el identificador de cada cuenta a partir del RUT |
 | `FENIX_CLAVE_CIFRADO` | Clave (32 bytes en base64) para cifrar los datos personales |
 | `CORREO_USUARIO`, `CORREO_CONTRASENA_APLICACION` | Cuenta SMTP para los enlaces de activación y recuperación |
 | `CORREO_MODO` | Opcional: `smtp` o `consola` |
-| `APP_URL` | Opcional: URL pública usada en los enlaces de los correos |
+| `APP_URL` | URL pública usada en los enlaces de los correos. Opcional en Vercel y en desarrollo; **obligatoria en App Hosting** |
 | `ADMIN_*` | Solo para `npm run seed:admin` |
 
 Si se pierde `FENIX_CLAVE_CIFRADO`, los datos cifrados no se pueden
@@ -58,3 +58,39 @@ recuperar. Ambas claves deben tener respaldo en un lugar seguro.
 
 Si `npm run dev` entra en un ciclo de recargas después de un `npm run build`,
 borra la carpeta `.next`.
+
+## Producción en Firebase App Hosting
+
+La configuración está en `apphosting.yaml`. App Hosting exige el plan Blaze y
+cobra por uso; la cuenta de facturación del proyecto debe ser la de la
+institución.
+
+1. **Facturación y alertas.** Vincular el proyecto a la cuenta de facturación
+   de la institución y crear alertas de presupuesto (por ejemplo, USD 5 y
+   USD 10) en Google Cloud. Las alertas avisan, pero no detienen el gasto: el
+   tope real lo da `maxInstances` en `apphosting.yaml`.
+2. **Secretos.** Crear cada secreto de `apphosting.yaml` con
+   `firebase apphosting:secrets:set <nombre>`. `fenix-clave-hmac` y
+   `fenix-clave-cifrado` deben tener **los mismos valores que la producción
+   actual**: con ellos están cifrados los datos y derivados los
+   identificadores de inicio de sesión.
+3. **Backend.** `firebase apphosting:backends:create`, conectado a este
+   repositorio, rama `main` y carpeta raíz `/`. Elegir la región más cercana
+   a Firestore (`southamerica-east1`) entre las que ofrezca App Hosting.
+4. **Permisos de los secretos.**
+   `firebase apphosting:secrets:grantaccess <nombre> --backend <backend>`
+   para cada uno.
+5. **`APP_URL`.** Descomentarla en `apphosting.yaml` con la dirección del
+   backend (`https://<backend>--<proyecto>.<región>.hosted.app`) y, más
+   adelante, con el dominio propio.
+6. **Probar en la dirección del backend:** inicio de sesión de los tres
+   roles, activación de una cuenta por correo (el correo se envía con
+   `after()`, después de responder: confirmar que llega), subida y descarga de
+   material, edición de la Landing y una página inexistente (404).
+7. **Limpieza de imágenes.** En Artifact Registry, regla para conservar solo
+   las últimas 5 imágenes del backend; cada despliegue guarda una.
+8. **Dominio.** Conectar el dominio `.cl` desde la consola de App Hosting y
+   actualizar `APP_URL`.
+9. **Retirar Vercel.** Borrar sus variables de entorno, desconectar el
+   repositorio y revocar en Google Cloud la clave de la cuenta de servicio
+   que usaba (`FIREBASE_ADMIN_PRIVATE_KEY`).
