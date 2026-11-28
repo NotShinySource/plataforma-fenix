@@ -36,8 +36,12 @@ export function AsistenciaElencoCard({ elenco, asistencias }: AsistenciaElencoCa
     { presente: 0, ausente: 0, justificado: 0 } as Record<EstadoAsistencia, number>
   );
 
-  const colorPorcentaje =
-    porcentaje >= 75 ? "text-emerald-600" : porcentaje >= 50 ? "text-amber-600" : "text-red-600";
+  // Sin clases registradas no hay porcentaje que mostrar: un 0 % en rojo
+  // haría creer que el alumno faltó a todo.
+  const sinRegistros = asistencias.length === 0;
+  const colorPorcentaje = sinRegistros
+    ? "text-slate-400"
+    : porcentaje >= 75 ? "text-emerald-600" : porcentaje >= 50 ? "text-amber-600" : "text-red-600";
 
   const sesionesOrdenadas = [...asistencias].sort((a, b) =>
     b.fechaSesion.localeCompare(a.fechaSesion)
@@ -53,13 +57,15 @@ export function AsistenciaElencoCard({ elenco, asistencias }: AsistenciaElencoCa
           </span>
           <h3 className="text-xl font-extrabold text-text-dark mt-1">{elenco.nombre}</h3>
           <p className="text-xs text-slate-600 font-semibold mt-1">
-            {asistencias.length} sesiones registradas
+            {sinRegistros
+              ? "Aún no hay clases registradas"
+              : `${asistencias.length} ${asistencias.length === 1 ? "sesión registrada" : "sesiones registradas"}`}
           </p>
         </div>
 
         <div className="flex items-center gap-6">
           <div className="text-center">
-            <p className={`text-3xl font-black ${colorPorcentaje}`}>{porcentaje}%</p>
+            <p className={`text-3xl font-black ${colorPorcentaje}`}>{sinRegistros ? "—" : `${porcentaje}%`}</p>
             <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mt-1">
               Asistencia
             </p>

@@ -20,9 +20,23 @@ servidor.
 ```bash
 npm ci
 firebase emulators:start      # en otra terminal
-npm run seed                  # usuarios y elenco de prueba en el emulador
+npm run seed:demo             # datos de demostración en el emulador
 npm run dev
 ```
+
+`npm run seed:demo` deja la plataforma lista para mostrarla. Se puede
+ejecutar varias veces sin duplicar datos y solo funciona contra el emulador.
+Crea:
+
+- las cuentas de los tres roles y cuatro alumnos ficticios;
+- las escuelas y dos elencos;
+- el semestre en curso, con una clase del Coro **hoy** a las 17:00, para
+  iniciarla y tomar asistencia;
+- tres clases ya realizadas con su asistencia;
+- material, avisos y tareas.
+
+Al final imprime los RUT y las contraseñas. `npm run seed` crea solo las
+cuentas base y un elenco.
 
 Con `NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true` la aplicación usa los emuladores.
 Los correos no se envían: se imprimen en la terminal del servidor.
