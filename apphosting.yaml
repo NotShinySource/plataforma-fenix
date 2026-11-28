@@ -1,0 +1,74 @@
+# Configuración de Firebase App Hosting (producción).
+#
+# Los valores marcados con `secret` se guardan en Cloud Secret Manager y no
+# en este archivo. Se crean una sola vez con:
+#   firebase apphosting:secrets:set <nombre-del-secreto>
+# y se autoriza al backend a leerlos con:
+#   firebase apphosting:secrets:grantaccess <nombre-del-secreto> --backend <backend>
+#
+# El Admin SDK no necesita clave privada aquí: dentro de App Hosting usa la
+# cuenta de servicio del proyecto (ver src/lib/firebase/admin.ts).
+
+runConfig:
+  # Sin tráfico, el servidor se apaga y no genera costo. La primera visita
+  # después de un rato de inactividad tarda unos segundos más.
+  minInstances: 0
+  # Tope de instancias: limita el gasto máximo ante un pico o un abuso.
+  # Con 80 solicitudes simultáneas por instancia, 3 instancias cubren con
+  # holgura los 150 usuarios concurrentes del RNF-04.
+  maxInstances: 3
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 1024
+
+env:
+  # Configuración web de Firebase: es pública (viaja en el JavaScript del
+  # navegador), pero se necesita al compilar, por eso BUILD y RUNTIME.
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    secret: firebase-web-api-key
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: fenix-database-61b8c.firebaseapp.com
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: fenix-database-61b8c
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: fenix-database-61b8c.firebasestorage.app
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "842906436424"
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:842906436424:web:b3d85e748b9acb6de6297d"
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_USE_FIREBASE_EMULATOR
+    value: "false"
+    availability: [BUILD, RUNTIME]
+
+  # Claves propias de la plataforma. Deben ser exactamente las mismas que se
+  # usan hoy en producción: con ellas están cifrados los datos personales y
+  # derivados los identificadores de inicio de sesión.
+  - variable: FENIX_CLAVE_HMAC
+    secret: fenix-clave-hmac
+    availability: [RUNTIME]
+  - variable: FENIX_CLAVE_CIFRADO
+    secret: fenix-clave-cifrado
+    availability: [RUNTIME]
+
+  # Envío de correos (activación y recuperación de cuentas).
+  - variable: CORREO_USUARIO
+    secret: correo-usuario
+    availability: [RUNTIME]
+  - variable: CORREO_CONTRASENA_APLICACION
+    secret: correo-contrasena-aplicacion
+    availability: [RUNTIME]
+
+  # Dirección pública del sitio, para los enlaces que se envían por correo.
+  # Se agrega cuando se conozca: primero la del backend
+  # (https://<backend>--fenix-database-61b8c.<region>.hosted.app) y después
+  # el dominio .cl. Mientras falte, el envío de enlaces falla con un error
+  # claro en vez de mandar enlaces a una dirección equivocada.
+  # - variable: APP_URL
+  #   value: https://www.ejemplo.cl
+  #   availability: [RUNTIME]
